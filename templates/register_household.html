@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Register Household</title>
+</head>
+<body>
+
+  <h2>Household Registration</h2>
+
+  <form method="POST">
+    <label>Members (comma separated):</label><br>
+    <input type="text" name="members" required><br><br>
+
+    <label>Postal Code:</label><br>
+    <input type="text" name="postal_code" required><br><br>
+
+    <button type="submit">Register Household</button>
+  </form>
+
+  {% if result %}
+    <h3>Result</h3>
+    <pre>{{ result }}</pre>
+  {% endif %}
+
+</body>
+</html>
