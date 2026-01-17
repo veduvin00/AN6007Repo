@@ -1,6 +1,6 @@
 import json
 import os
-import models.household as Household
+from models.household import Household
 from utils.id_generator import generate_household_id
 
 HOUSEHOLD_FILE = "storage/households.json"
