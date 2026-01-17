@@ -10,12 +10,17 @@ def load_households():
 
     global households
     if not os.path.exists(HOUSEHOLD_FILE) or os.path.getsize(HOUSEHOLD_FILE) == 0:
-        households = {}
+        households.clear()
         return
 
     with open(HOUSEHOLD_FILE, "r") as f:
         data = json.load(f)
-        households = {hid: Household.from_dict(hdata) for hid, hdata in data.items()}
+        households.clear()
+        for hid, hdata in data.items():
+            if "household_id" not in hdata:
+                hdata["household_id"] = hid
+            
+            households[hid] = Household.from_dict(hdata)
 
 def save_households():
     os.makedirs("storage", exist_ok=True)
