@@ -40,7 +40,7 @@ def register_household(data):
     households[household_id] = new_household
     save_households()
 
-    claim_link = f"http://127.0.0.1/api/households/{household_id}/claim"
+    claim_link = f"http://127.0.0.1:5000/api/households/{household_id}/claim"
 
     return {
         "message": "Household registered successfully",
