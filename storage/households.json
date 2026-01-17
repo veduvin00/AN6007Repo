@@ -7,5 +7,20 @@
     ],
     "postal_code": "648150",
     "vouchers": {}
+  },
+  "H96964802269": {
+    "household_id": "H96964802269",
+    "members": [
+      "Liu Gang",
+      "Zhao Wenqing"
+    ],
+    "postal_code": "210012",
+    "vouchers": {
+      "Jan2026": {
+        "2": 30,
+        "5": 20,
+        "10": 14
+      }
+    }
   }
 }
