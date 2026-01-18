@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Voucher Balance{% endblock %}
+
+{% block content %}
+
+<h2 class="text-center mb-4">Voucher Balance</h2>
+
+<p class="text-center fs-5 mb-4">
+  🏠 <strong>Household ID:</strong> {{ household_id }}
+</p>
+
+{% if vouchers %}
+
+{% for tranche, denoms in vouchers.items() %}
+<div class="mb-5 text-center">
+
+  <h4 class="mb-3">{{ tranche }}</h4>
+
+  <div class="row justify-content-center g-4">
+
+    {% for denom, count in denoms.items() %}
+    <div class="col-6 col-md-3">
+      <div class="card denomination-card p-3 position-relative
+     {% if count == 0 %}exhausted{% endif %}">
+
+
+  <!-- Ribbon -->
+  <span class="ribbon">{{ tranche }}</span>
+
+  <h5 class="mt-3">${{ denom }}</h5>
+  <p class="fs-4 mb-0">{{ count }}</p>
+  <small class="text-muted">remaining</small>
+
+</div>
+
+    </div>
+    {% endfor %}
+
+  </div>
+</div>
+{% endfor %}
+
+{% else %}
+<div class="alert alert-warning text-center">
+  No vouchers available.
+</div>
+{% endif %}
+
+<hr class="my-4">
+
+<!-- Action Buttons -->
+<div class="d-flex justify-content-center gap-3 flex-wrap">
+
+  <a href="/ui/redeem/{{ household_id }}"
+     class="btn btn-primary action-btn">
+    Redeem Voucher
+  </a>
+
+  <a href="/ui/claim/{{ household_id }}"
+     class="btn btn-outline-success action-btn">
+    Claim Voucher
+  </a>
+
+</div>
+
+{% endblock %}

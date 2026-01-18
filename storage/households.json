@@ -6,7 +6,13 @@
       "Jiaqi"
     ],
     "postal_code": "648150",
-    "vouchers": {}
+    "vouchers": {
+      "Jan2026": {
+        "2": 30,
+        "5": 20,
+        "10": 14
+      }
+    }
   },
   "H96964802269": {
     "household_id": "H96964802269",
@@ -17,9 +23,128 @@
     "postal_code": "210012",
     "vouchers": {
       "Jan2026": {
+        "2": 0,
+        "5": 20,
+        "10": 14
+      },
+      "May2025": {
+        "2": 50,
+        "5": 0,
+        "10": 30
+      }
+    }
+  },
+  "H36965209191": {
+    "household_id": "H36965209191",
+    "members": [
+      "Vedika",
+      "Jiaqi"
+    ],
+    "postal_code": "648150",
+    "vouchers": {}
+  },
+  "H57003398370": {
+    "household_id": "H57003398370",
+    "members": [
+      "Vedika",
+      "Jingmei"
+    ],
+    "postal_code": "648365",
+    "vouchers": {}
+  },
+  "H30175066101": {
+    "household_id": "H30175066101",
+    "members": [
+      "Veds",
+      "Vin",
+      "Name3"
+    ],
+    "postal_code": "675876",
+    "vouchers": {}
+  },
+  "H00812877962": {
+    "household_id": "H00812877962",
+    "members": [
+      "Name 1",
+      "Name 2",
+      "Name 3"
+    ],
+    "postal_code": "648365",
+    "vouchers": {
+      "Jan2026": {
         "2": 30,
         "5": 20,
         "10": 14
+      }
+    }
+  },
+  "H16685437316": {
+    "household_id": "H16685437316",
+    "members": [
+      "Name 3",
+      "Name 4",
+      "Name 5"
+    ],
+    "postal_code": "675876",
+    "vouchers": {
+      "Jan2026": {
+        "2": 30,
+        "5": 20,
+        "10": 14
+      }
+    }
+  },
+  "H79577069401": {
+    "household_id": "H79577069401",
+    "members": [
+      "Name 1",
+      "Name 2",
+      "Name 3"
+    ],
+    "postal_code": "648365",
+    "vouchers": {
+      "Jan2026": {
+        "2": 30,
+        "5": 20,
+        "10": 14
+      }
+    }
+  },
+  "H01363476230": {
+    "household_id": "H01363476230",
+    "members": [
+      "Name 1",
+      "Name 2",
+      "Name 3"
+    ],
+    "postal_code": "648365",
+    "vouchers": {
+      "Jan2026": {
+        "2": 20,
+        "5": 20,
+        "10": 14
+      }
+    }
+  },
+  "H21855545331": {
+    "household_id": "H21855545331",
+    "members": [
+      "Person 1",
+      "Person 2",
+      "Person 3",
+      "Person 4"
+    ],
+    "postal_code": "678435",
+    "vouchers": {
+      "Jan2026": {
+        "2": 20,
+        "5": 20,
+        "10": 14
+      },
+      "May2025": {
+        "2": 50,
+        "5": 15,
+        "10": 30
       }
     }
   }

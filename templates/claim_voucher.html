@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Claim Voucher{% endblock %}
+
+{% block content %}
+
+<h3 class="text-center mb-4">Claim CDC Voucher</h3>
+
+<div class="card mx-auto">
+  <div class="card-body text-center">
+
+    <p class="fs-5 mb-4">
+      🏠 <strong>Household ID:</strong> {{ household_id }}
+    </p>
+
+    <form method="POST">
+
+      <div class="mb-4">
+        <label class="form-label">Voucher Tranche</label>
+        <select name="tranche" class="form-select text-center" required>
+          <option value="" disabled selected>Select a tranche</option>
+          <option value="Jan2026">Jan2026</option>
+          <option value="May2025">May2025</option>
+        </select>
+      </div>
+
+      <!-- Responsive Claim Button -->
+      <div class="d-flex justify-content-center">
+        <button class="btn btn-success register-btn">
+          Claim Voucher
+        </button>
+      </div>
+
+    </form>
+
+    {% if result %}
+    <div class="alert alert-info mt-4">
+      {{ result.message }}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

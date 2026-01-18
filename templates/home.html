@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+<h2 class="text-center mb-4">CDC Voucher System</h2>
+
+<ul class="nav nav-tabs justify-content-center">
+
+  <li class="nav-item">
+    <a class="nav-link {% if request.path == '/ui/household' %}active{% endif %}"
+       href="/ui/household">
+      Register Household
+    </a>
+  </li>
+
+  <li class="nav-item">
+    <a class="nav-link {% if request.path == '/ui/merchant' %}active{% endif %}"
+       href="/ui/merchant">
+      Register Merchant
+    </a>
+  </li>
+
+</ul>
+
+<div class="text-center mt-4 text-muted">
+    Please select an option above to continue.
+</div>
+
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Redeem Voucher{% endblock %}
+
+{% block content %}
+
+<h2 class="text-center mb-4">Redeem CDC Voucher</h2>
+
+<p class="text-center"><strong>Household ID:</strong> {{ household_id }}</p>
+
+<form method="POST" onsubmit="return validateSelection();">
+
+<!-- Hidden fields -->
+<input type="hidden" name="voucher_code" id="voucher_code">
+<input type="hidden" name="denomination" id="denomination">
+
+<div class="row g-4 justify-content-center">
+
+{% for tranche, denoms in vouchers.items() %}
+  {% for denom, count in denoms.items() %}
+    {% if count > 0 %}
+    <div class="col-md-4">
+      <button type="button"
+        class="card coupon-card text-center p-3 position-relative w-100
+               {% if count == 0 %}exhausted{% endif %}"
+        data-tranche="{{ tranche }}"
+        data-denomination="{{ denom }}">
+
+
+    <!-- Ribbon -->
+    <span class="ribbon">{{ tranche }}</span>
+
+    <h4 class="mt-3">${{ denom }}</h4>
+    <p class="text-muted">{{ count }} vouchers available</p>
+
+</button>
+
+    </div>
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+
+</div>
+
+<hr class="my-4">
+
+<div class="card">
+  <div class="card-body">
+
+    <div class="mb-3">
+      <label class="form-label">Merchant ID</label>
+      <input name="merchant_id" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Quantity</label>
+      <input type="number" name="amount" min="1" class="form-control" required>
+    </div>
+
+    <button class="btn btn-primary w-100">
+      Confirm Redemption
+    </button>
+
+  </div>
+</div>
+
+</form>
+
+{% if result and result.message %}
+<hr class="my-4">
+
+<div class="text-center">
+
+  <!-- Success Icon -->
+  <div class="text-success mb-2" style="font-size: 3rem;">
+    ✔
+  </div>
+
+  <h4 class="text-success mb-3">
+    {{ result.message }}
+  </h4>
+
+  <!-- Transaction ID -->
+  <p class="fs-5 mb-3">
+    🧾 <strong>Transaction ID:</strong><br>
+    {{ result.transaction_id }}
+  </p>
+
+  <!-- Remaining Balance -->
+  <div class="mt-3">
+    <h5>Remaining Balance</h5>
+
+    {% for tranche, denoms in result.remaining_balance.items() %}
+      <div class="mt-2">
+        <strong>{{ tranche }}</strong>
+        <ul class="list-unstyled">
+          {% for denom, count in denoms.items() %}
+            <li>${{ denom }} → {{ count }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endif %}
+
+
+<script>
+document.querySelectorAll('.coupon-card').forEach(card => {
+    card.addEventListener('click', function () {
+
+        // Clear previous selection
+        document.querySelectorAll('.coupon-card').forEach(c => {
+            c.classList.remove('coupon-selected');
+        });
+
+        // Mark selected
+        this.classList.add('coupon-selected');
+
+        // Set hidden inputs (THIS WAS FAILING BEFORE)
+        document.getElementById('voucher_code').value =
+            this.dataset.tranche;
+
+        document.getElementById('denomination').value =
+            this.dataset.denomination;
+
+        console.log("Selected:",
+            this.dataset.tranche,
+            this.dataset.denomination
+        );
+    });
+});
+
+function validateSelection() {
+    const voucher = document.getElementById('voucher_code').value;
+    const denom = document.getElementById('denomination').value;
+
+    if (!voucher || !denom) {
+        alert("Please select a voucher before redeeming.");
+        return false;
+    }
+    return true;
+}
+</script>
+
+{% endblock %}

@@ -2,7 +2,8 @@ import csv
 import os
 from datetime import datetime
 
-MERCHANT_FILE = "storage/merchants.txt"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MERCHANT_FILE = os.path.join(BASE_DIR, "..", "storage", "merchants.txt")
 
 def register_merchant(data):
     if not data:

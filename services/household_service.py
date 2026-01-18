@@ -3,7 +3,9 @@ import os
 from models.household import Household
 from utils.id_generator import generate_household_id
 
-HOUSEHOLD_FILE = "storage/households.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+HOUSEHOLD_FILE = os.path.join(BASE_DIR, "..", "storage", "households.json")
+
 households = {}
 
 def load_households():
@@ -24,6 +26,7 @@ def load_households():
 
 def save_households():
     os.makedirs("storage", exist_ok=True)
+    print("Saving households to:", os.path.abspath(HOUSEHOLD_FILE))
     with open(HOUSEHOLD_FILE, "w") as f:
         json_data = {hid: h.to_dict() for hid, h in households.items()}
         json.dump(json_data, f, indent=2)
@@ -45,7 +48,7 @@ def register_household(data):
     households[household_id] = new_household
     save_households()
 
-    claim_link = f"http://127.0.0.1:5000/api/households/{household_id}/claim"
+    claim_link = f"http://127.0.0.1:5000/ui/claim/{household_id}"
 
     return {
         "message": "Household registered successfully",

@@ -1,9 +1,10 @@
 "AN6007 Group 13"
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template, redirect
 from services.household_service import (
     register_household,
     get_redemption_balance,
-    load_households
+    load_households,
+    households
 )
 from services.voucher_service import claim_voucher
 from services.redemption_service import redeem_voucher
@@ -12,6 +13,123 @@ from services.merchant_service import register_merchant
 app = Flask(__name__)
 
 load_households()
+
+@app.route("/")
+def home():
+    return render_template("home.html")
+
+# ------------------------------
+# HOUSEHOLD REGISTRATION UI
+# ------------------------------
+@app.route("/ui/household", methods=["GET", "POST"])
+def household_ui():
+    result = None
+
+    if request.method == "POST":
+        data = {
+            "members": [m.strip() for m in request.form.get("members", "").split(",")],
+            "postal_code": request.form.get("postal_code")
+        }
+        response, status = register_household(data)
+        result = response
+
+    return render_template("register_household.html", result=result)
+
+# ------------------------------
+# MERCHANT REGISTRATION UI
+# ------------------------------
+@app.route("/ui/merchant", methods=["GET", "POST"])
+def merchant_ui():
+    result = None
+
+    if request.method == "POST":
+        data = {
+            "merchant_id": request.form.get("merchant_id"),
+            "merchant_name": request.form.get("merchant_name"),
+            "uen": request.form.get("uen"),
+            "bank_name": request.form.get("bank_name"),
+            "bank_code": request.form.get("bank_code"),
+            "branch_code": request.form.get("branch_code"),
+            "account_number": request.form.get("account_number"),
+            "account_holder": request.form.get("account_holder")
+        }
+
+        response, status = register_merchant(data)
+        result = response
+
+    return render_template("register_merchant.html", result=result)
+
+
+
+# -----------------------
+# REDEEM VOUCHER UI
+# -----------------------
+@app.route("/ui/redeem/<household_id>", methods=["GET", "POST"])
+def redeem_ui(household_id):
+
+    result = None
+
+    if request.method == "POST":
+        data = request.form.to_dict()
+        response, status = redeem_voucher(household_id, data)
+        result = response
+
+    household = households[household_id]
+
+    return render_template(
+        "redeem_voucher.html",
+        household_id=household_id,
+        vouchers=household.vouchers,
+        result=result
+    )
+
+
+# -----------------------
+# VOUCHER BACALNCE UI
+# -----------------------
+@app.route("/ui/balance/<household_id>")
+def balance_ui(household_id):
+    if household_id not in households:
+        return "Invalid household", 404
+
+    household = households[household_id]
+
+    return render_template(
+        "balance.html",
+        household_id=household_id,
+        vouchers=household.vouchers
+    )
+
+
+# -----------------------
+# VOUCHER CLAIM UI
+# -----------------------
+@app.route("/ui/claim/<household_id>", methods=["GET", "POST"])
+def claim_ui(household_id):
+    if household_id not in households:
+        return "Invalid household", 404
+
+    result = None
+
+    if request.method == "POST":
+        data = {
+            "tranche": request.form.get("tranche")
+        }
+
+        response, status = claim_voucher(household_id, data)
+        result = response
+
+        # ✅ Redirect back to balance after success
+        if status == 200:
+            return redirect(f"/ui/balance/{household_id}")
+
+    return render_template(
+        "claim_voucher.html",
+        household_id=household_id,
+        result=result
+    )
+
+
 
 @app.route("/api/households", methods=["POST"])
 def create_household():

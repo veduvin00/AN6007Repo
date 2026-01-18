@@ -1,26 +1,66 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Register Household</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Register Household{% endblock %}
 
-  <h2>Household Registration</h2>
+{% block content %}
 
-  <form method="POST">
-    <label>Members (comma separated):</label><br>
-    <input type="text" name="members" required><br><br>
+<h3 class="text-center mb-4">Register Household</h3>
 
-    <label>Postal Code:</label><br>
-    <input type="text" name="postal_code" required><br><br>
+<div class="card mx-auto">
+  <div class="card-body">
 
-    <button type="submit">Register Household</button>
-  </form>
+    <form method="POST">
 
-  {% if result %}
-    <h3>Result</h3>
-    <pre>{{ result }}</pre>
-  {% endif %}
+      <div class="mb-3">
+        <label class="form-label">Members (comma separated)</label>
+        <input name="members" class="form-control" required>
+      </div>
 
-</body>
-</html>
+      <div class="mb-3">
+        <label class="form-label">Postal Code</label>
+        <input name="postal_code" class="form-control" required>
+      </div>
+
+      <!-- Responsive button -->
+      <div class="d-flex justify-content-center">
+        <button class="btn btn-primary register-btn">
+          Register Household
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+{% if result and result.household_id %}
+<hr class="my-4">
+
+<div class="text-center">
+
+  <!-- Success Icon -->
+  <div class="text-success mb-2" style="font-size: 3rem;">
+    ✔
+  </div>
+
+  <h4 class="text-success mb-3">
+    Household registered successfully
+  </h4>
+
+  <!-- Household ID -->
+  <p class="fs-5">
+    🏠 <strong>Household ID:</strong>
+    {{ result.household_id }}
+  </p>
+
+  <!-- Claim Link -->
+  <p class="mt-3">
+    🔗 <strong>Claim your vouchers:</strong><br>
+    <a href="{{ result.claim_link }}" class="btn btn-outline-success mt-2">
+      Go to Claim Page
+    </a>
+  </p>
+
+</div>
+{% endif %}
+
+{% endblock %}
