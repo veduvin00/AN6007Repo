@@ -43,22 +43,11 @@ def merchant_ui():
     result = None
 
     if request.method == "POST":
-        data = {
-            "merchant_id": request.form.get("merchant_id"),
-            "merchant_name": request.form.get("merchant_name"),
-            "uen": request.form.get("uen"),
-            "bank_name": request.form.get("bank_name"),
-            "bank_code": request.form.get("bank_code"),
-            "branch_code": request.form.get("branch_code"),
-            "account_number": request.form.get("account_number"),
-            "account_holder": request.form.get("account_holder")
-        }
-
+        data = request.get_json()
         response, status = register_merchant(data)
         result = response
 
     return render_template("register_merchant.html", result=result)
-
 
 
 # -----------------------
