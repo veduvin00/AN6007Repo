@@ -27,3 +27,5 @@ def register_merchant(data):
         ])
 
     return {"message": "Merchant registered successfully"}, 201
+
+#test 
