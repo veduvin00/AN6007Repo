@@ -48,7 +48,7 @@ def register_household(data):
     households[household_id] = new_household
     save_households()
 
-    claim_link = f"http://127.0.0.1:5000/ui/claim/{household_id}"
+    claim_link = f"https://cdc-voucher-app.onrender.com/ui/claim/{household_id}"
 
     return {
         "message": "Household registered successfully",
