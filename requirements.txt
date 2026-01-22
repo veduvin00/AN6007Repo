@@ -1,0 +1,4 @@
+flet>=0.22.0
+
+# (Optional but recommended for your original Flask services)
+flask>=2.3.0
