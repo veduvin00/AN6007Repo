@@ -301,7 +301,8 @@ def main(page: ft.Page):
 
     def qr_view():
         household_id = ft.TextField(label="Household ID", width=400)
-        qr_image = ft.Image(width=200, height=200)
+        qr_image = ft.Image(width=200, height=200,
+                            src="")
         result = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=16)
 
         def generate(e):
