@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <h3 class="text-center mb-4">Household Login</h3>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="alert alert-{{ category }} text-center" role="alert">
+                        {{ message }}
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+
+                <form method="POST">
+                    <div class="mb-4">
+                        <label for="household_id" class="form-label">Enter Household ID</label>
+                        <input type="text" class="form-control form-control-lg text-center" 
+                               id="household_id" name="household_id" 
+                               placeholder="e.g. H12345678" required autofocus>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">Login</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <small class="text-muted">Don't have an ID? <a href="/ui/household">Register here</a></small>
+        </div>
+    </div>
+</div>
+{% endblock %}

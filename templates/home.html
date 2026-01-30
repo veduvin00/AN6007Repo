@@ -5,26 +5,32 @@
 
 <h2 class="text-center mb-4">CDC Voucher System</h2>
 
-<ul class="nav nav-tabs justify-content-center">
+<div class="d-flex justify-content-center mb-4">
+    <a href="/ui/login" class="btn btn-primary btn-lg px-5 shadow">
+        🔐 Existing User Login
+    </a>
+</div>
+
+<hr class="my-4" style="width: 50%; margin: auto;">
+
+<p class="text-center text-muted mb-3">New to the system?</p>
+
+<ul class="nav nav-pills justify-content-center gap-3">
 
   <li class="nav-item">
-    <a class="nav-link {% if request.path == '/ui/household' %}active{% endif %}"
+    <a class="nav-link border {% if request.path == '/ui/household' %}active{% endif %}"
        href="/ui/household">
       Register Household
     </a>
   </li>
 
   <li class="nav-item">
-    <a class="nav-link {% if request.path == '/ui/merchant' %}active{% endif %}"
+    <a class="nav-link border {% if request.path == '/ui/merchant' %}active{% endif %}"
        href="/ui/merchant">
       Register Merchant
     </a>
   </li>
 
 </ul>
-
-<div class="text-center mt-4 text-muted">
-    Please select an option above to continue.
-</div>
 
 {% endblock %}

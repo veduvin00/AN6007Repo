@@ -1,5 +1,5 @@
 "AN6007 Group 13"
-from flask import Flask, request, jsonify, render_template, redirect
+from flask import Flask, request, jsonify, render_template, redirect, flash, url_for
 from services.household_service import (
     register_household,
     get_redemption_balance,
@@ -12,11 +12,28 @@ from services.merchant_service import register_merchant
 
 app = Flask(__name__)
 
+app.secret_key = "an6007_group13_secret_key"
 load_households()
 
 @app.route("/")
 def home():
     return render_template("home.html")
+
+
+# ------------------------------
+# LOGIN UI
+# ------------------------------
+@app.route("/ui/login", methods=["GET", "POST"])
+def login_ui():
+    if request.method == "POST":
+        household_id = request.form.get("household_id", "").strip()
+        
+        if household_id in households:
+            return redirect(f"/ui/balance/{household_id}")
+        else:
+            flash("Invalid Household ID. Please check and try again.", "danger")
+
+    return render_template("login.html")
 
 # ------------------------------
 # HOUSEHOLD REGISTRATION UI
@@ -43,7 +60,10 @@ def merchant_ui():
     result = None
 
     if request.method == "POST":
-        data = request.get_json()
+        data = request.form.to_dict()
+        if not data:
+            data = request.get_json(silent=True)
+        
         response, status = register_merchant(data)
         result = response
 
@@ -63,12 +83,15 @@ def redeem_ui(household_id):
         response, status = redeem_voucher(household_id, data)
         result = response
 
-    household = households[household_id]
+    household = households.get(household_id)
+    if not household:
+         return "Household not found", 404
+    vouchers = household.get('vouchers', {})
 
     return render_template(
         "redeem_voucher.html",
         household_id=household_id,
-        vouchers=household.vouchers,
+        vouchers=vouchers,
         result=result
     )
 
@@ -82,11 +105,11 @@ def balance_ui(household_id):
         return "Invalid household", 404
 
     household = households[household_id]
-
+    vouchers = household.get('vouchers', {})
     return render_template(
         "balance.html",
         household_id=household_id,
-        vouchers=household.vouchers
+        vouchers=vouchers
     )
 
 
