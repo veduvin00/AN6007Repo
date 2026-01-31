@@ -91,7 +91,7 @@ def main(page: ft.Page):
         merchant_input = ft.TextField(
             label="Merchant ID",
             width=360,
-            prefix_icon=ft.icons.STORE
+            prefix_icon="store"
         )
         msg = ft.Column()
 
@@ -170,13 +170,13 @@ def main(page: ft.Page):
         mid = current_merchant["mid"]
         mname = current_merchant["mname"]
 
-        # Setting page.appbar property directly is the alternative/easier approach
         page.appbar = ft.AppBar(
             title=ft.Text(f"{mname} ({mid})"),
-            bgcolor=ft.colors.SURFACE_VARIANT,
-            leading=ft.Icon(ft.icons.STORE),
+            bgcolor="#eeeeee",
+            leading=ft.Icon("store"),
             actions=[
-                ft.IconButton(ft.icons.LOGOUT, tooltip="Logout", on_click=logout)
+                # [Fix] Added 'icon=' parameter to fix the error
+                ft.IconButton(icon = ft.Icons.LOGOUT, tooltip="Logout", on_click=logout)
             ]
         )
 
@@ -185,12 +185,9 @@ def main(page: ft.Page):
             width=420,
             text_align="center"
         )
-        qty_input = ft.TextField(
-            label="Quantity",
-            value="1",
-            width=420
-        )
-
+        
+        # [Design Update] Removed Quantity Input Field based on your feedback
+        
         vouchers_ui = ft.Column(spacing=20)
         result_ui = ft.Column()
         sel = {"hid": None, "tranche": None, "amount": None}
@@ -252,17 +249,12 @@ def main(page: ft.Page):
         def confirm(e):
             result_ui.controls.clear()
             if not sel["hid"] or not sel["amount"]:
-                result_ui.controls.append(error_text("Select a voucher first"))
+                result_ui.controls.append(error_text("Please select a voucher first"))
                 page.update()
                 return
 
-            try:
-                qty = int(qty_input.value)
-                if qty <= 0: raise ValueError
-            except:
-                result_ui.controls.append(error_text("Invalid quantity"))
-                page.update()
-                return
+            # [Logic Update] Default quantity to 1 since we removed the input
+            qty = 1
 
             res, status = redeem_voucher(
                 sel["hid"],
@@ -275,7 +267,7 @@ def main(page: ft.Page):
             )
 
             if status == 200:
-                result_ui.controls.append(success_box(f"Redeemed successfully!\nTX: {res['transaction_id']}"))
+                result_ui.controls.append(success_box(f"Redeemed 1 Voucher!\nTX: {res['transaction_id']}"))
                 # Clear selection after success
                 sel["tranche"] = None
                 sel["amount"] = None
@@ -290,9 +282,13 @@ def main(page: ft.Page):
                 [
                     token_input,
                     ft.ElevatedButton("Verify Token", on_click=load_vouchers),
+                    
+                    # Vouchers display area
                     vouchers_ui,
-                    qty_input,
-                    ft.ElevatedButton("Confirm Redemption", on_click=confirm, width=420),
+                    
+                    # [Design Update] Removed Quantity Input from UI
+                    
+                    ft.ElevatedButton("Confirm Redemption (1 Qty)", on_click=confirm, width=420),
                     result_ui
                 ],
                 width=900
