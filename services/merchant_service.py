@@ -3,15 +3,15 @@ import os
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# 确保路径指向 storage 文件夹
+# Ensure the path points to the storage folder
 STORAGE_DIR = os.path.join(BASE_DIR, "..", "storage")
 MERCHANT_FILE = os.path.join(STORAGE_DIR, "merchants.txt")
 
-# 1. 定义 merchants 字典，修复 ImportError
+# 1. Define the merchants dictionary to fix ImportError
 merchants = {}
 
 def load_merchants():
-    """从文本文件加载商户到内存字典中"""
+    """Load merchants from the text file into the in-memory dictionary"""
     if not os.path.exists(MERCHANT_FILE):
         return
     
@@ -33,7 +33,7 @@ def register_merchant(data):
 
     os.makedirs(STORAGE_DIR, exist_ok=True)
 
-    # 写入文件（持久化）
+    # Write to file (Persistence)
     with open(MERCHANT_FILE, "a", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -49,11 +49,11 @@ def register_merchant(data):
             "Active"
         ])
     
-    # 2. 同步更新内存中的字典，确保登录立即生效
+    # 2. Synchronously update the in-memory dictionary to ensure login works immediately
     mid = data.get("merchant_id")
     merchants[mid] = data
     
     return {"message": "Merchant registered successfully"}, 201
 
-# 初始化加载
+# Initialize loading
 load_merchants()
