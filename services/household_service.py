@@ -3,14 +3,19 @@ import json
 import os
 import random
 import string
-from models.household import Household
 
 households = {}
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STORAGE_DIR = os.path.join(BASE_DIR, "..", "storage")
+# Get the project root directory (parent of services folder)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # This is the services folder
+PROJECT_ROOT = os.path.dirname(BASE_DIR)  # Go up one level to project root
+
+# Storage is at the same level as services
+STORAGE_DIR = os.path.join(PROJECT_ROOT, "storage")
 HOUSEHOLD_FILE_JSON = os.path.join(STORAGE_DIR, "households.json")
 HOUSEHOLD_FILE_CSV = os.path.join(STORAGE_DIR, "households.txt")
+
+print(f"[INIT] Looking for households.json at: {HOUSEHOLD_FILE_JSON}")
 
 def load_households():
     global households
@@ -20,10 +25,14 @@ def load_households():
         try:
             with open(HOUSEHOLD_FILE_JSON, "r") as f:
                 data = json.load(f)
+                # Load as dictionaries directly
                 for hid, h_data in data.items():
-                    households[hid] = Household.from_dict(h_data)
+                    households[hid] = h_data
+            print(f"✅ Loaded {len(households)} households from {HOUSEHOLD_FILE_JSON}")
         except Exception as e:
-            print(f"Error loading JSON: {e}")
+            print(f"❌ Error loading JSON: {e}")
+    else:
+        print(f"⚠️ households.json not found at {HOUSEHOLD_FILE_JSON}")
 
     if os.path.exists(HOUSEHOLD_FILE_CSV):
         try:
@@ -35,32 +44,36 @@ def load_households():
                         if hid not in households:
                             members = row[1].split(";")
                             postal = row[2]
-                            households[hid] = Household(hid, members, postal)
+                            households[hid] = {
+                                "household_id": hid,
+                                "members": members,
+                                "postal_code": postal,
+                                "vouchers": {}
+                            }
         except Exception as e:
-            print(f"Error loading CSV: {e}")
+            print(f"❌ Error loading CSV: {e}")
 
 def save_households():
     os.makedirs(STORAGE_DIR, exist_ok=True)
     
-    data_to_save = {}
-    for hid, obj in households.items():
-        data_to_save[hid] = obj.to_dict()
-        
-    with open(HOUSEHOLD_FILE_JSON, "w") as f:
-        json.dump(data_to_save, f, indent=2)
+    try:
+        with open(HOUSEHOLD_FILE_JSON, "w") as f:
+            json.dump(households, f, indent=2)
+        print(f"✅ Saved {len(households)} households to {HOUSEHOLD_FILE_JSON}")
+    except Exception as e:
+        print(f"❌ Error saving households: {e}")
 
 def register_household(data):
     hid = "H" + "".join(str(random.randint(0, 9)) for _ in range(11))
 
-    new_household = Household(
-        household_id=hid,
-        members=data.get("members", []),
-        postal_code=data.get("postal_code", "")
-    )
+    new_household = {
+        "household_id": hid,
+        "members": data.get("members", []),
+        "postal_code": data.get("postal_code", ""),
+        "vouchers": {}
+    }
     
-
     households[hid] = new_household
-    
     save_households()
     
     return {
@@ -73,9 +86,13 @@ def get_redemption_balance(household_id):
     if household_id not in households:
         return {"error": "Household not found"}, 404
     
+    household = households[household_id]
     
+    # Return the vouchers structure
     return {
-        "vouchers": households[household_id].vouchers
+        "household_id": household_id,
+        "vouchers": household.get("vouchers", {})
     }, 200
 
+# Initialize on import
 load_households()
