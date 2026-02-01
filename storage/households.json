@@ -147,5 +147,21 @@
         "10": 30
       }
     }
+  },
+  "H74776682556": {
+    "household_id": "H74776682556",
+    "members": [
+      "1"
+    ],
+    "postal_code": "1",
+    "vouchers": {}
+  },
+  "H69568104967": {
+    "household_id": "H69568104967",
+    "members": [
+      "1"
+    ],
+    "postal_code": "1",
+    "vouchers": {}
   }
 }
