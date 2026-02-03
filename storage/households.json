@@ -163,5 +163,52 @@
     ],
     "postal_code": "1",
     "vouchers": {}
+  },
+  "H83771725295": {
+    "household_id": "H83771725295",
+    "members": [
+      "33"
+    ],
+    "postal_code": "333333",
+    "vouchers": {}
+  },
+  "H76752296659": {
+    "household_id": "H76752296659",
+    "members": [
+      "3"
+    ],
+    "postal_code": "123343",
+    "vouchers": {}
+  },
+  "H82608044284": {
+    "household_id": "H82608044284",
+    "members": [
+      "1"
+    ],
+    "postal_code": "1",
+    "vouchers": {}
+  },
+  "H45942386245": {
+    "household_id": "H45942386245",
+    "members": [
+      "2"
+    ],
+    "postal_code": "333333",
+    "vouchers": {
+      "May2025": {
+        "2": 50,
+        "5": 20,
+        "10": 30
+      },
+      "Jan2026": {
+        "2": 30,
+        "5": 20,
+        "10": 14
+      }
+    },
+    "active_token": "TXN-4I097W",
+    "token_data": {
+      "2": 2
+    }
   }
 }
