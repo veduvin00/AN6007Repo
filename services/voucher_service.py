@@ -20,8 +20,8 @@ def claim_voucher(household_id, data):
     
     # Define voucher schemes
     schemes = {
-        "Jan2026": {"2": 30, "5": 20, "10": 14},
-        "Feb2026": {"2": 35, "5": 25, "10": 18},
+        "Jan2026": {"2": 30, "5": 12, "10": 15},
+        "May2025": {"2": 50, "5": 20, "10": 30}
     }
     
     if tranche not in schemes:

@@ -1,8 +1,8 @@
 class Household:
 
     TRANCHE_CONFIG = {
-        "May2025":{2: 50, 5: 20, 10: 30},
-        "Jan2026":{2: 30, 5: 20, 10: 14}
+        "Jan2026": {"2": 30, "5": 12, "10": 15},
+        "May2025": {"2": 50, "5": 20, "10": 30}
     }
 
     def __init__(self, household_id, members, postal_code, vouchers = None):
