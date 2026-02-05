@@ -1,5 +1,14 @@
-flet>=0.22.0
+# CDC Voucher Redemption System - Requirements
+# AN6007 Group 13
 
-# (Optional but recommended for your original Flask services)
-flask>=2.3.0
-gunicorn
+# Web Framework
+Flask==3.0.0
+
+# Desktop UI Framework (IMPORTANT: Version 0.28.3)
+flet==0.28.3
+
+# HTTP Client
+requests==2.31.0
+
+# Optional but recommended
+python-dotenv==1.0.0
