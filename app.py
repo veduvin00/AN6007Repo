@@ -42,12 +42,100 @@ def home():
 @app.route("/ui/login", methods=["GET", "POST"])
 def login_ui():
     if request.method == "POST":
-        household_id = request.form.get("household_id", "").strip()
-        if household_id in households:
-            return redirect(f"/ui/balance/{household_id}")
+        # 获取输入的 ID (login_id 是新模版用的, household_id 是为了防错/兼容)
+        login_id = request.form.get("login_id", "").strip()
+        if not login_id:
+             login_id = request.form.get("household_id", "").strip()
+
+        # 1. 检查是否是 Household
+        if login_id in households:
+            return redirect(f"/ui/balance/{login_id}")
+        
+        # 2. 检查是否是 Merchant (新增逻辑)
+        elif login_id in merchants:
+            return redirect(f"/ui/merchant/{login_id}")
+            
         else:
-            flash("Invalid Household ID. Please check and try again.", "danger")
+            flash("Invalid ID. Please check and try again.", "danger")
+            
     return render_template("login.html")
+
+# ------------------------------
+# MERCHANT DASHBOARD UI (New)
+# ------------------------------
+@app.route("/ui/merchant/<merchant_id>", methods=["GET", "POST"])
+def merchant_dashboard_ui(merchant_id):
+    # 1. 安全检查
+    if merchant_id not in merchants:
+        return "Merchant not found", 404
+    
+    merchant = merchants[merchant_id]
+    result = None
+    
+    # 2. 处理核销逻辑 (您提到的 Confirm Transaction 功能)
+    if request.method == "POST":
+        token = request.form.get("token", "").strip()
+        
+        # 调用现有的 API 逻辑 (复用 services/redemption_service.py 或直接调用 API 函数)
+        # 这里我们直接调用 app.py 内部已经写好的 redeem_token 逻辑的变体，
+        # 或者为了代码整洁，我们直接调用 API endpoint 的逻辑封装。
+        # 为了不破坏现有结构，我这里直接通过 request 模拟调用后端逻辑，或者直接调用 service 层。
+        
+        # 使用 Service 层是最安全的（不通过 HTTP 避免开销）
+        from services.redemption_service import redeem_voucher
+        from services.household_service import households, save_households
+        from services.notification_service import create_redemption_notification
+        
+        # 寻找 token 对应的 household (逻辑与 Flet App 类似)
+        target_household = None
+        token_data = None
+        
+        for hid, h in households.items():
+            if h.get("active_token") == token:
+                target_household = hid
+                token_data = h.get("token_data")
+                break
+        
+        if target_household and token_data:
+            # 计算总金额
+            total_amount = sum(int(d) * int(c) for d, c in token_data.items())
+            
+            # 扣除券
+            h_obj = households[target_household]
+            for denom, count in token_data.items():
+                denom = str(denom)
+                for tranche in h_obj.get("vouchers", {}).values():
+                    if denom in tranche:
+                        tranche[denom] = max(0, tranche[denom] - count)
+                        break
+            
+            # 清除 Token
+            households[target_household]["active_token"] = None
+            households[target_household]["token_data"] = None
+            save_households()
+            
+            # 发送通知并记录
+            create_redemption_notification(
+                household_id=target_household,
+                amount=total_amount,
+                vouchers=token_data,
+                merchant_name=merchant["merchant_name"]
+            )
+            
+            result = {
+                "success": True,
+                "amount": total_amount,
+                "vouchers": token_data,
+                "household_id": target_household
+            }
+        else:
+            flash("Invalid or Expired Token", "danger")
+
+    return render_template(
+        "merchant_dashboard.html",
+        merchant=merchant,
+        result=result
+    )
 
 # ------------------------------
 # HOUSEHOLD REGISTRATION UI

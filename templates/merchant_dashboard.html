@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Merchant Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        
+        <div class="text-center mb-4">
+            <span class="badge bg-success mb-2">Merchant Portal</span>
+            <h2>{{ merchant.merchant_name }}</h2>
+            <p class="text-muted">ID: {{ merchant.merchant_id }}</p>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-center">Confirm Transaction</h5>
+            </div>
+            <div class="card-body p-4">
+                
+                {% if result and result.success %}
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;">✔</i>
+                        </div>
+                        <h3 class="text-success">Transaction Successful!</h3>
+                        <h1 class="display-4 fw-bold my-3">${{ result.amount }}</h1>
+                        
+                        <div class="alert alert-light border">
+                            <strong>Collected from:</strong> {{ result.household_id }}
+                        </div>
+                        
+                        <a href="/ui/merchant/{{ merchant.merchant_id }}" class="btn btn-outline-primary mt-3">
+                            Process Next Transaction
+                        </a>
+                    </div>
+                {% else %}
+                    <form method="POST">
+                        <div class="mb-4 text-center">
+                            <label for="token" class="form-label fs-5">Enter Customer Token / Scan QR</label>
+                            <input type="text" 
+                                   class="form-control form-control-lg text-center fw-bold text-uppercase" 
+                                   id="token" 
+                                   name="token" 
+                                   placeholder="TXN-XXXXXX" 
+                                   style="font-size: 2rem; letter-spacing: 2px;"
+                                   required autocomplete="off" autofocus>
+                            <div class="form-text">Ask the customer to show their QR code or token.</div>
+                        </div>
+
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} text-center">{{ message }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg py-3 fw-bold">
+                                CONFIRM TRANSACTION
+                            </button>
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a href="/ui/login" class="text-muted text-decoration-none">Logout</a>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

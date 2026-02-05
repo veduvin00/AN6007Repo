@@ -276,5 +276,27 @@
       "2": 2,
       "10": 2
     }
+  },
+  "H37605293715": {
+    "household_id": "H37605293715",
+    "members": [
+      "Liu Runlin",
+      "Cheng Jiaqi"
+    ],
+    "postal_code": "648150",
+    "vouchers": {
+      "Jan2026": {
+        "2": 25,
+        "5": 11,
+        "10": 13
+      },
+      "May2025": {
+        "2": 50,
+        "5": 20,
+        "10": 30
+      }
+    },
+    "active_token": null,
+    "token_data": null
   }
 }

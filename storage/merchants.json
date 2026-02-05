@@ -1,0 +1,86 @@
+{
+  "M004": {
+    "merchant_id": "M004",
+    "merchant_name": "NTUC FairPrice",
+    "uen": "200604500N",
+    "bank_name": "DBS Bank Ltd",
+    "bank_code": "7171",
+    "branch_code": "001",
+    "account_number": "67894567",
+    "account_holder": "NTUC FairPrice Co-op Ltd",
+    "registration_date": "2026-01-22",
+    "status": "Active"
+  },
+  "M006": {
+    "merchant_id": "M006",
+    "merchant_name": "NTUC FairPrice",
+    "uen": "200604500N",
+    "bank_name": "DBS Bank Ltd",
+    "bank_code": "7171",
+    "branch_code": "001",
+    "account_number": "67894567",
+    "account_holder": "NTUC FairPrice Co-op Ltd",
+    "registration_date": "2026-01-22",
+    "status": "Active"
+  },
+  "11111": {
+    "merchant_id": "11111",
+    "merchant_name": "Harry",
+    "uen": "1",
+    "bank_name": "1",
+    "bank_code": "1",
+    "branch_code": "1",
+    "account_number": "1",
+    "account_holder": "1",
+    "registration_date": "2026-01-31",
+    "status": "Active"
+  },
+  "1111": {
+    "merchant_id": "1111",
+    "merchant_name": "1",
+    "uen": "1",
+    "bank_name": "1",
+    "bank_code": "1",
+    "branch_code": "1",
+    "account_number": "1",
+    "account_holder": "1",
+    "registration_date": "2026-01-31",
+    "status": "Active"
+  },
+  "11": {
+    "merchant_id": "11",
+    "merchant_name": "",
+    "uen": "",
+    "bank_name": "",
+    "bank_code": "",
+    "branch_code": "",
+    "account_number": "",
+    "account_holder": "",
+    "registration_date": "2026-01-31",
+    "status": "Active"
+  },
+  "1": {
+    "merchant_id": "1",
+    "merchant_name": "",
+    "uen": "",
+    "bank_name": "",
+    "bank_code": "",
+    "branch_code": "",
+    "account_number": "",
+    "account_holder": "",
+    "registration_date": "2026-01-31",
+    "status": "Active"
+  },
+  "M487": {
+    "merchant_id": "M487",
+    "merchant_name": "Github",
+    "uen": "ABABABABA",
+    "bank_name": "DBS Bank",
+    "bank_code": "1234",
+    "branch_code": "1234",
+    "account_number": "1234",
+    "account_holder": "1234",
+    "registration_date": "2026-02-05",
+    "status": "Active"
+  }
+}

@@ -1,0 +1,15 @@
+[
+  {
+    "household_id": "H37605293715",
+    "amount": 35,
+    "vouchers": {
+      "2": 5,
+      "5": 1,
+      "10": 2
+    },
+    "merchant_name": "Github",
+    "timestamp": 1770289768.1097245,
+    "datetime": "2026-02-05 19:09:28",
+    "type": "redemption"
+  }
+]
