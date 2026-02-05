@@ -64,7 +64,18 @@ def save_households():
         print(f"❌ Error saving households: {e}")
 
 def register_household(data):
-    hid = "H" + "".join(str(random.randint(0, 9)) for _ in range(11))
+    # Generate unique household ID with collision check
+    max_attempts = 100
+    for attempt in range(max_attempts):
+        hid = "H" + "".join(str(random.randint(0, 9)) for _ in range(11))
+        if hid not in households:
+            break
+    else:
+        # If we couldn't find a unique ID after max_attempts, use timestamp
+        import time
+        hid = f"H{int(time.time() * 1000) % 100000000000:011d}"
+    
+    print(f"🆔 Generated unique household ID: {hid}")
 
     new_household = {
         "household_id": hid,

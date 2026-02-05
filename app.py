@@ -20,6 +20,8 @@ from services.notification_service import (
 import random
 import string
 import os
+import csv
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = "an6007_group13_secret_key"
@@ -490,6 +492,51 @@ def redeem_token():
     # Get merchant name
     merchant_name = merchants.get(merchant_id, {}).get("merchant_name", "Merchant")
     print(f"Merchant name: {merchant_name}")
+    
+    # ✅ LOG TO CSV FILE - HOURLY BASIS
+    os.makedirs("storage/redemptions", exist_ok=True)
+    now = datetime.now()
+    csv_filename = f"storage/redemptions/Redeem{now.strftime('%Y%m%d%H')}.csv"
+    transaction_id = f"TX-{now.strftime('%Y%m%d%H%M%S')}"
+    
+    # Format vouchers for CSV: all denominations in one row
+    voucher_details = ", ".join([f"${d}x{c}" for d, c in sorted(token_data.items(), key=lambda x: int(x[0]))])
+    
+    # Prepare CSV row data
+    csv_row = [
+        transaction_id,
+        target_household,
+        merchant_id,
+        now.strftime("%Y%m%d%H%M%S"),
+        token,  # Include the token used
+        voucher_details,  # All vouchers redeemed
+        total_amount,
+        "Completed",
+        ""  # Remark column
+    ]
+    
+    # Write to CSV
+    try:
+        print(f"\n📝 CSV LOGGING DEBUG:")
+        print(f"   File: {csv_filename}")
+        print(f"   Row data: {csv_row}")
+        
+        with open(csv_filename, "a", newline="", encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(csv_row)
+            f.flush()  # Force write to disk
+        
+        # Verify file was written
+        if os.path.exists(csv_filename):
+            file_size = os.path.getsize(csv_filename)
+            print(f"✅ Logged to CSV: {csv_filename} (size: {file_size} bytes)")
+        else:
+            print(f"⚠️ CSV file not found after write!")
+            
+    except Exception as e:
+        print(f"⚠️ CSV logging failed: {e}")
+        import traceback
+        traceback.print_exc()
     
     # Create notification
     try:

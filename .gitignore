@@ -16,3 +16,5 @@ venv/
 households.json
 merchants.txt
 *.csv
+*.json
+*.pyc
