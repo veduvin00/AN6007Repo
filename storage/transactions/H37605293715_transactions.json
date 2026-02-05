@@ -1,6 +1,53 @@
 [
   {
     "household_id": "H37605293715",
+    "amount": 6,
+    "vouchers": {
+      "2": 3
+    },
+    "merchant_name": "NTUC FairPrice",
+    "timestamp": 1770292559.0033112,
+    "datetime": "2026-02-05 19:55:59",
+    "type": "redemption"
+  },
+  {
+    "household_id": "H37605293715",
+    "amount": 16,
+    "vouchers": {
+      "2": 3,
+      "10": 1
+    },
+    "merchant_name": "Github",
+    "timestamp": 1770292486.513213,
+    "datetime": "2026-02-05 19:54:46",
+    "type": "redemption"
+  },
+  {
+    "household_id": "H37605293715",
+    "amount": 8,
+    "vouchers": {
+      "2": 4
+    },
+    "merchant_name": "NTUC FairPrice",
+    "timestamp": 1770292144.7138305,
+    "datetime": "2026-02-05 19:49:04",
+    "type": "redemption"
+  },
+  {
+    "household_id": "H37605293715",
+    "amount": 45,
+    "vouchers": {
+      "2": 5,
+      "5": 1,
+      "10": 3
+    },
+    "merchant_name": "Github",
+    "timestamp": 1770292001.6827238,
+    "datetime": "2026-02-05 19:46:41",
+    "type": "redemption"
+  },
+  {
+    "household_id": "H37605293715",
     "amount": 35,
     "vouchers": {
       "2": 5,

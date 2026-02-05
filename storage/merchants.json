@@ -82,5 +82,17 @@
     "account_holder": "1234",
     "registration_date": "2026-02-05",
     "status": "Active"
+  },
+  "M666": {
+    "merchant_id": "M666",
+    "merchant_name": "Gautama Siddartha",
+    "uen": "qwertyu",
+    "bank_name": "Ganapati",
+    "bank_code": "GNPT",
+    "branch_code": "OMSRIMAHA",
+    "account_number": "1234567890",
+    "account_holder": "999888777",
+    "registration_date": "2026-02-05",
+    "status": "Active"
   }
 }

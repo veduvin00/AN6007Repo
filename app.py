@@ -1,4 +1,6 @@
 # "AN6007 Group 13"
+import csv
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template, redirect, flash, url_for
 from services.household_service import (
     register_household,
@@ -72,21 +74,11 @@ def merchant_dashboard_ui(merchant_id):
     merchant = merchants[merchant_id]
     result = None
     
-    # 2. 处理核销逻辑 (您提到的 Confirm Transaction 功能)
+    # 2. 处理核销逻辑
     if request.method == "POST":
         token = request.form.get("token", "").strip()
         
-        # 调用现有的 API 逻辑 (复用 services/redemption_service.py 或直接调用 API 函数)
-        # 这里我们直接调用 app.py 内部已经写好的 redeem_token 逻辑的变体，
-        # 或者为了代码整洁，我们直接调用 API endpoint 的逻辑封装。
-        # 为了不破坏现有结构，我这里直接通过 request 模拟调用后端逻辑，或者直接调用 service 层。
-        
-        # 使用 Service 层是最安全的（不通过 HTTP 避免开销）
-        from services.redemption_service import redeem_voucher
-        from services.household_service import households, save_households
-        from services.notification_service import create_redemption_notification
-        
-        # 寻找 token 对应的 household (逻辑与 Flet App 类似)
+        # 寻找 token 对应的 household
         target_household = None
         token_data = None
         
@@ -104,15 +96,65 @@ def merchant_dashboard_ui(merchant_id):
             h_obj = households[target_household]
             for denom, count in token_data.items():
                 denom = str(denom)
+                count = int(count) # 确保是数字
                 for tranche in h_obj.get("vouchers", {}).values():
                     if denom in tranche:
-                        tranche[denom] = max(0, tranche[denom] - count)
-                        break
+                        deduct = min(tranche[denom], count)
+                        tranche[denom] -= deduct
+                        count -= deduct
+                        if count == 0:
+                            break
             
             # 清除 Token
             households[target_household]["active_token"] = None
             households[target_household]["token_data"] = None
             save_households()
+            
+            # ============================================================
+            # [新增] 网页版也需要这段 CSV 生成逻辑
+            # ============================================================
+            try:
+                csv_dir = os.path.join("storage", "redemptions")
+                os.makedirs(csv_dir, exist_ok=True)
+                
+                now = datetime.now()
+                csv_filename = f"Redeem{now.strftime('%Y%m%d%H')}.csv"
+                csv_path = os.path.join(csv_dir, csv_filename)
+                file_exists = os.path.exists(csv_path)
+                
+                # 展开券数据
+                voucher_list_for_csv = []
+                for denom, count in token_data.items():
+                    for _ in range(int(count)):
+                        voucher_list_for_csv.append(int(denom))
+                voucher_list_for_csv.sort()
+                
+                txn_id = f"TX{now.strftime('%Y%m%d%H%M%S')}"
+                txn_time_str = now.strftime("%Y-%m-%d-%H%M%S")
+                
+                with open(csv_path, mode='a', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    if not file_exists:
+                        writer.writerow([
+                            "Transaction_ID", "Household_ID", "Merchant_ID", 
+                            "Transaction_Date_Time", "Voucher_Code", "Denomination_Used", 
+                            "Amount_Redeemed", "Payment_Status", "Remarks"
+                        ])
+                    
+                    total_items = len(voucher_list_for_csv)
+                    for index, denom_val in enumerate(voucher_list_for_csv):
+                        remark = "Final denomination used" if index == total_items - 1 else str(index + 1)
+                        v_code = f"V{target_household[-4:]}{str(index+1).zfill(3)}"
+                        
+                        writer.writerow([
+                            txn_id, target_household, merchant_id, txn_time_str,
+                            v_code, f"${denom_val}.00", f"${total_amount}.00",
+                            "Completed", remark
+                        ])
+                print(f"✅ CSV Logged from Web UI: {csv_path}")
+            except Exception as e:
+                print(f"❌ CSV Logging Error: {e}")
+            # ============================================================
             
             # 发送通知并记录
             create_redemption_notification(

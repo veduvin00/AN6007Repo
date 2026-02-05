@@ -1,0 +1,13 @@
+[
+  {
+    "household_id": "H51536202021",
+    "amount": 2,
+    "vouchers": {
+      "2": 1
+    },
+    "merchant_name": "NTUC FairPrice",
+    "timestamp": 1770292905.5368772,
+    "datetime": "2026-02-05 20:01:45",
+    "type": "redemption"
+  }
+]

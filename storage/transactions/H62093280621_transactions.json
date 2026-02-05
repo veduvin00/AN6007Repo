@@ -1,0 +1,15 @@
+[
+  {
+    "household_id": "H62093280621",
+    "amount": 170,
+    "vouchers": {
+      "2": 10,
+      "5": 10,
+      "10": 10
+    },
+    "merchant_name": "Gautama Siddartha",
+    "timestamp": 1770293151.153742,
+    "datetime": "2026-02-05 20:05:51",
+    "type": "redemption"
+  }
+]
