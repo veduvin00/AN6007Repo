@@ -83,22 +83,92 @@ def merchant_ui():
 # -----------------------
 @app.route("/ui/redeem/<household_id>", methods=["GET", "POST"])
 def redeem_ui(household_id):
-    result = None
-    if request.method == "POST":
-        data = request.form.to_dict()
-        response, status = redeem_voucher(household_id, data)
-        result = response
-    household = households.get(household_id)
-    if not household:
+    # 1. 基础校验
+    if household_id not in households:
         return "Household not found", 404
+    
+    household = households[household_id]
     vouchers = household.get('vouchers', {})
+    result = None
+
+    if request.method == "POST":
+        # 2. 初始化变量
+        token_data_aggregated = {} # 用于存储 { "10": 总数量, "5": 总数量 }
+        total_value = 0
+        details_for_display = {} # 用于前端显示详情 { "Jan2026 $10": 2 }
+        has_selection = False
+        error_msg = None
+
+        # 3. 遍历表单数据
+        # 前端字段命名格式约定为: name="vouchers_{{tranche}}_{{denom}}"
+        for key, value in request.form.items():
+            if key.startswith("vouchers_"):
+                try:
+                    # 解析 key, 例如: vouchers_Jan2026_10
+                    parts = key.split("_") 
+                    # 注意：Tranche 名称可能包含下划线，所以我们取第一个_之后到最后一个_之前的部分作为 Tranche，最后一个作为 Denom
+                    # 但为了简单，假设 Tranche 不含下划线，或者我们倒着取
+                    denom_str = parts[-1]
+                    tranche_name = "_".join(parts[1:-1])
+                    
+                    count = int(value)
+                    
+                    if count > 0:
+                        has_selection = True
+                        
+                        # A. 校验余额
+                        current_balance = 0
+                        if tranche_name in vouchers and denom_str in vouchers[tranche_name]:
+                            current_balance = vouchers[tranche_name][denom_str]
+                        
+                        if count > current_balance:
+                            error_msg = f"Insufficient balance for {tranche_name} ${denom_str}. Max: {current_balance}"
+                            break
+                        
+                        # B. 汇总数据 (为了兼容 Merchant App，我们需要按面额汇总)
+                        if denom_str in token_data_aggregated:
+                            token_data_aggregated[denom_str] += count
+                        else:
+                            token_data_aggregated[denom_str] = count
+                            
+                        # C. 计算总价值
+                        total_value += int(denom_str) * count
+                        
+                        # D. 记录显示详情
+                        display_key = f"{tranche_name} ${denom_str}"
+                        details_for_display[display_key] = count
+                        
+                except ValueError:
+                    continue
+
+        # 4. 处理结果
+        if error_msg:
+            flash(error_msg, "danger")
+        elif not has_selection:
+            flash("Please select at least one voucher.", "danger")
+        else:
+            # 生成 Token
+            token = "TXN-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            
+            # 保存到数据库
+            households[household_id]["active_token"] = token
+            households[household_id]["token_data"] = token_data_aggregated
+            save_households()
+            
+            result = {
+                "success": True,
+                "message": "Token Generated Successfully!",
+                "token": token,
+                "vouchers": details_for_display, # 前端显示详细的 Tranche 信息
+                "total_value": total_value
+            }
+
     return render_template(
         "redeem_voucher.html",
         household_id=household_id,
         vouchers=vouchers,
         result=result
     )
-
 # -----------------------
 # VOUCHER BALANCE UI
 # -----------------------

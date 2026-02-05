@@ -3,144 +3,161 @@
 
 {% block content %}
 
-<h2 class="text-center mb-4">Redeem CDC Voucher</h2>
-
+<h2 class="text-center mb-4">Generate Redemption Token</h2>
 <p class="text-center"><strong>Household ID:</strong> {{ household_id }}</p>
 
-<form method="POST" onsubmit="return validateSelection();">
-
-<!-- Hidden fields -->
-<input type="hidden" name="voucher_code" id="voucher_code">
-<input type="hidden" name="denomination" id="denomination">
-
-<div class="row g-4 justify-content-center">
-
-{% for tranche, denoms in vouchers.items() %}
-  {% for denom, count in denoms.items() %}
-    {% if count > 0 %}
-    <div class="col-md-4">
-      <button type="button"
-        class="card coupon-card text-center p-3 position-relative w-100
-               {% if count == 0 %}exhausted{% endif %}"
-        data-tranche="{{ tranche }}"
-        data-denomination="{{ denom }}">
-
-
-    <!-- Ribbon -->
-    <span class="ribbon">{{ tranche }}</span>
-
-    <h4 class="mt-3">${{ denom }}</h4>
-    <p class="text-muted">{{ count }} vouchers available</p>
-
-</button>
-
+{% if result and result.success %}
+<div class="card mx-auto border-success mb-4" style="max-width: 500px;">
+  <div class="card-header bg-success text-white text-center">
+    <h4 class="mb-0">Ready to Redeem</h4>
+  </div>
+  <div class="card-body text-center">
+    <p class="text-muted">Show this QR Code to the Merchant</p>
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ result.token }}" alt="QR Code" class="img-fluid mb-3 border p-2">
+    <div class="alert alert-light border">
+      <h2 class="font-monospace text-primary mb-0">{{ result.token }}</h2>
     </div>
-    {% endif %}
-  {% endfor %}
-{% endfor %}
-
-</div>
-
-<hr class="my-4">
-
-<div class="card">
-  <div class="card-body">
-
-    <div class="mb-3">
-      <label class="form-label">Merchant ID</label>
-      <input name="merchant_id" class="form-control" required>
+    <div class="mt-3">
+        <h5>Total Value: ${{ result.total_value }}</h5>
+        <ul class="list-group list-group-flush text-start mx-auto" style="max-width: 300px;">
+            {% for name, count in result.vouchers.items() %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ name }}
+                    <span class="badge bg-primary rounded-pill">x {{ count }}</span>
+                </li>
+            {% endfor %}
+        </ul>
     </div>
-
-    <div class="mb-3">
-      <label class="form-label">Quantity</label>
-      <input type="number" name="amount" min="1" class="form-control" required>
-    </div>
-
-    <button class="btn btn-primary w-100">
-      Confirm Redemption
-    </button>
-
+    <hr>
+    <a href="/ui/redeem/{{ household_id }}" class="btn btn-outline-secondary">Generate Another</a>
   </div>
 </div>
+
+{% else %}
+<form method="POST">
+    <div class="row g-4 justify-content-center pb-5 mb-5"> {% for tranche, denoms in vouchers.items() %}
+      {% for denom, count in denoms.items() %}
+        {% if count > 0 %}
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card shadow-sm h-100 border-0" style="background-color: #f8f9fa;">
+            <div class="card-body text-center position-relative">
+                
+                <span class="badge bg-success position-absolute top-0 end-0 m-2">{{ tranche }}</span>
+                
+                <h3 class="display-5 fw-bold mt-3">${{ denom }}</h3>
+                <p class="text-muted small">{{ count }} available</p>
+
+                <div class="d-flex justify-content-center align-items-center mt-3 gap-2">
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle" 
+                            style="width: 32px; height: 32px;"
+                            onclick="updateCount('{{ tranche }}', '{{ denom }}', -1, {{ count }})">
+                        <i class="bi bi-dash">-</i>
+                    </button>
+
+                    <input type="number" 
+                           name="vouchers_{{ tranche }}_{{ denom }}" 
+                           id="input_{{ tranche }}_{{ denom }}" 
+                           value="0" 
+                           class="form-control text-center fw-bold border-0 bg-white" 
+                           style="width: 60px;" 
+                           readonly>
+
+                    <button type="button" class="btn btn-outline-success btn-sm rounded-circle" 
+                            style="width: 32px; height: 32px;"
+                            onclick="updateCount('{{ tranche }}', '{{ denom }}', 1, {{ count }})">
+                        +
+                    </button>
+                </div>
+
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </div>
+
+    <div class="fixed-bottom bg-white border-top shadow-lg p-3">
+        <div class="container d-flex justify-content-between align-items-center" style="max-width: 800px;">
+            <div>
+                <small class="text-muted d-block">Total Value</small>
+                <span class="h2 text-primary fw-bold" id="totalDisplay">$0</span>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg px-5" id="generateBtn" disabled>
+                Generate QR Code
+            </button>
+        </div>
+    </div>
 
 </form>
-
-{% if result and result.message %}
-<hr class="my-4">
-
-<div class="text-center">
-
-  <!-- Success Icon -->
-  <div class="text-success mb-2" style="font-size: 3rem;">
-    ✔
-  </div>
-
-  <h4 class="text-success mb-3">
-    {{ result.message }}
-  </h4>
-
-  <!-- Transaction ID -->
-  <p class="fs-5 mb-3">
-    🧾 <strong>Transaction ID:</strong><br>
-    {{ result.transaction_id }}
-  </p>
-
-  <!-- Remaining Balance -->
-  <div class="mt-3">
-    <h5>Remaining Balance</h5>
-
-    {% for tranche, denoms in result.remaining_balance.items() %}
-      <div class="mt-2">
-        <strong>{{ tranche }}</strong>
-        <ul class="list-unstyled">
-          {% for denom, count in denoms.items() %}
-            <li>${{ denom }} → {{ count }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endfor %}
-  </div>
-
-</div>
 {% endif %}
 
-
 <script>
-document.querySelectorAll('.coupon-card').forEach(card => {
-    card.addEventListener('click', function () {
+    // 存储所有选中的总价值
+    let totalValue = 0;
 
-        // Clear previous selection
-        document.querySelectorAll('.coupon-card').forEach(c => {
-            c.classList.remove('coupon-selected');
+    function updateCount(tranche, denom, delta, maxLimit) {
+        const inputId = `input_${tranche}_${denom}`;
+        const inputEl = document.getElementById(inputId);
+        let currentVal = parseInt(inputEl.value);
+        let newVal = currentVal + delta;
+
+        // 边界检查
+        if (newVal < 0) newVal = 0;
+        if (newVal > maxLimit) {
+            alert(`You only have ${maxLimit} vouchers of this type.`);
+            newVal = maxLimit;
+        }
+
+        // 只有数值改变时才更新
+        if (newVal !== currentVal) {
+            inputEl.value = newVal;
+            
+            // 更新总金额
+            // 变化量 = delta * 面额 (注意：delta可能是+1或-1，但如果触达边界，实际变化可能不是1)
+            // 更安全的做法是重新计算总额
+            calculateTotal();
+            
+            // UI 反馈：如果数量 > 0，卡片高亮
+            const cardBody = inputEl.closest('.card');
+            if (newVal > 0) {
+                cardBody.classList.add('border-primary', 'border', 'border-2');
+                cardBody.style.backgroundColor = '#e7f1ff';
+            } else {
+                cardBody.classList.remove('border-primary', 'border', 'border-2');
+                cardBody.style.backgroundColor = '#f8f9fa';
+            }
+        }
+    }
+
+    function calculateTotal() {
+        totalValue = 0;
+        let hasItems = false;
+        
+        // 遍历所有 input 计算总额
+        const inputs = document.querySelectorAll('input[name^="vouchers_"]');
+        inputs.forEach(input => {
+            const val = parseInt(input.value);
+            if (val > 0) {
+                // name格式 vouchers_Tranche_Denom
+                const parts = input.name.split('_');
+                const denom = parseInt(parts[parts.length - 1]);
+                totalValue += val * denom;
+                hasItems = true;
+            }
         });
 
-        // Mark selected
-        this.classList.add('coupon-selected');
-
-        // Set hidden inputs (THIS WAS FAILING BEFORE)
-        document.getElementById('voucher_code').value =
-            this.dataset.tranche;
-
-        document.getElementById('denomination').value =
-            this.dataset.denomination;
-
-        console.log("Selected:",
-            this.dataset.tranche,
-            this.dataset.denomination
-        );
-    });
-});
-
-function validateSelection() {
-    const voucher = document.getElementById('voucher_code').value;
-    const denom = document.getElementById('denomination').value;
-
-    if (!voucher || !denom) {
-        alert("Please select a voucher before redeeming.");
-        return false;
+        // 更新显示
+        document.getElementById('totalDisplay').innerText = '$' + totalValue;
+        
+        // 只有选了东西才能提交
+        const btn = document.getElementById('generateBtn');
+        if (hasItems) {
+            btn.disabled = false;
+        } else {
+            btn.disabled = true;
+        }
     }
-    return true;
-}
 </script>
 
 {% endblock %}
