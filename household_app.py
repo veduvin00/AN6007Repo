@@ -367,6 +367,24 @@ def main(page: ft.Page):
                 show_snack("Please select at least one voucher", "red")
                 return
             
+            # Calculate total
+            total = sum(int(d) * c for d, c in selected.items())
+            if total == 0:
+                show_snack("Please select at least one voucher", "red")
+                return
+            
+            # Validate user has sufficient vouchers for each denomination
+            for denom, count in selected.items():
+                if count > 0:
+                    found = False
+                    for tranche, denoms in vouchers.items():
+                        if denom in denoms and denoms[denom] >= count:
+                            found = True
+                            break
+                    if not found:
+                        show_snack(f"Insufficient ${denom} vouchers", "red")
+                        return
+            
             response, status = api_client.generate_token(session["user_id"], selected)
             
             if status == 200:
