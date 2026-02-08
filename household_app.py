@@ -652,7 +652,7 @@ def main(page: ft.Page):
                 padding=20, bgcolor="white", border=ft.border.only(top=ft.BorderSide(1, "#eee")),
                 content=ft.Column([
                     summary_text,
-                    ft.ElevatedButton("Generate QR Code", on_click=generate_qr, width=350, height=50,
+                    ft.ElevatedButton("Generate Redemption Code", on_click=generate_qr, width=350, height=50,
                                     bgcolor="blue", color="white"),
                     ft.Container(height=10),
                     code_display_container
