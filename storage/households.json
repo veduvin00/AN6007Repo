@@ -353,5 +353,38 @@
     },
     "active_token": null,
     "token_data": null
+  },
+  "H88171205520": {
+    "household_id": "H88171205520",
+    "members": [
+      "Kevin Tong"
+    ],
+    "postal_code": "640518",
+    "vouchers": {
+      "May2025": {
+        "2": 50,
+        "5": 20,
+        "10": 30
+      },
+      "Jan2026": {
+        "2": 30,
+        "5": 12,
+        "10": 15
+      }
+    }
+  },
+  "H50449513768": {
+    "household_id": "H50449513768",
+    "members": [
+      "h t"
+    ],
+    "postal_code": "645333",
+    "vouchers": {
+      "Jan2026": {
+        "2": 30,
+        "5": 12,
+        "10": 15
+      }
+    }
   }
 }

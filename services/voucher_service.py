@@ -20,7 +20,7 @@ def claim_voucher(household_id, data):
     
     # Define voucher schemes
     schemes = {
-        "Jan2026": {"2": 30, "5": 12, "10": 15},
+        "Jan2026": {"2": 30, "5": 12, "10": 18},
         "May2025": {"2": 50, "5": 20, "10": 30}
     }
     
