@@ -116,13 +116,13 @@ def main(page: ft.Page):
             first_name_input = ft.TextField(
                 label="First Name*",
                 value=first_name,
-                width=160,
+                width=140,
                 border_color="#3b82f6"
             )
             last_name_input = ft.TextField(
                 label="Last Name*",
                 value=last_name,
-                width=160,
+                width=140,
                 border_color="#3b82f6"
             )
             
@@ -322,8 +322,8 @@ def main(page: ft.Page):
         page.controls.clear()
         
         schemes = {
-            "Jan2026": {"2": 30, "5": 20, "10": 14},
-            "Feb2026": {"2": 35, "5": 25, "10": 18},
+            "May2025": {"2": 50, "5": 20, "10": 30},
+            "Jan2026": {"2": 30, "5": 12, "10": 18},
         }
         
         def claim_scheme(scheme_name, vouchers):
