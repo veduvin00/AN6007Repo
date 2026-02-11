@@ -91,21 +91,34 @@ def merchant_dashboard_ui(merchant_id):
                 break
         
         if target_household and token_data:
-            # Calculate total amount
-            total_amount = sum(int(d) * int(c) for d, c in token_data.items())
+            # Calculate total amount (Handle nested structure: {tranche: {denom: count}})
+            total_amount = 0
+            voucher_list_for_csv = []
             
-            # Deduct vouchers
             h_obj = households[target_household]
-            for denom, count in token_data.items():
-                denom = str(denom)
-                count = int(count) # Ensure it's a number
-                for tranche in h_obj.get("vouchers", {}).values():
-                    if denom in tranche:
-                        deduct = min(tranche[denom], count)
-                        tranche[denom] -= deduct
-                        count -= deduct
-                        if count == 0:
-                            break
+            
+            # Deduct vouchers with strict tranche matching
+            # token_data structure expected: { "Jan2026": { "10": 1 }, "May2025": { "2": 2 } }
+            for tranche_name, vouchers in token_data.items():
+                if tranche_name not in h_obj.get("vouchers", {}):
+                    continue
+                    
+                for denom, count in vouchers.items():
+                    denom = str(denom)
+                    count = int(count)
+                    total_amount += int(denom) * count
+                    
+                    # Prepare for CSV
+                    for _ in range(count):
+                        voucher_list_for_csv.append(int(denom))
+                    
+                    # Deduct logic
+                    if denom in h_obj["vouchers"][tranche_name]:
+                        current_val = h_obj["vouchers"][tranche_name][denom]
+                        h_obj["vouchers"][tranche_name][denom] = max(0, current_val - count)
+
+            # Sort for display consistency
+            voucher_list_for_csv.sort()
             
             # Clear Token
             households[target_household]["active_token"] = None
@@ -113,7 +126,7 @@ def merchant_dashboard_ui(merchant_id):
             save_households()
             
             # ============================================================
-            # [New] Web version also requires this CSV generation logic
+            # CSV generation logic
             # ============================================================
             try:
                 csv_dir = os.path.join("storage", "redemptions")
@@ -123,13 +136,6 @@ def merchant_dashboard_ui(merchant_id):
                 csv_filename = f"Redeem{now.strftime('%Y%m%d%H')}.csv"
                 csv_path = os.path.join(csv_dir, csv_filename)
                 file_exists = os.path.exists(csv_path)
-                
-                # Expand voucher data
-                voucher_list_for_csv = []
-                for denom, count in token_data.items():
-                    for _ in range(int(count)):
-                        voucher_list_for_csv.append(int(denom))
-                voucher_list_for_csv.sort()
                 
                 txn_id = f"TX{now.strftime('%Y%m%d%H%M%S')}"
                 txn_time_str = now.strftime("%Y-%m-%d-%H%M%S")
@@ -162,7 +168,7 @@ def merchant_dashboard_ui(merchant_id):
             create_redemption_notification(
                 household_id=target_household,
                 amount=total_amount,
-                vouchers=token_data,
+                vouchers=token_data, # Pass the structured data
                 merchant_name=merchant["merchant_name"]
             )
             
@@ -225,9 +231,9 @@ def redeem_ui(household_id):
 
     if request.method == "POST":
         # 2. Initialize variables
-        token_data_aggregated = {} # Store { "10": total count, "5": total count }
+        token_data_structured = {} # Store { "Jan2026": {"10": 1}, "May2025": {"10": 1} }
         total_value = 0
-        details_for_display = {} # For front-end display { "Jan2026 $10": 2 }
+        details_for_display = {} 
         has_selection = False
         error_msg = None
 
@@ -236,10 +242,7 @@ def redeem_ui(household_id):
         for key, value in request.form.items():
             if key.startswith("vouchers_"):
                 try:
-                    # Parse key, e.g., vouchers_Jan2026_10
                     parts = key.split("_") 
-                    # Note: Tranche name may contain underscores, so we take from first _ to last _ as tranche, last as denom
-                    # For simplicity, assume tranche has no underscore or we take from the end
                     denom_str = parts[-1]
                     tranche_name = "_".join(parts[1:-1])
                     
@@ -257,11 +260,12 @@ def redeem_ui(household_id):
                             error_msg = f"Insufficient balance for {tranche_name} ${denom_str}. Max: {current_balance}"
                             break
                         
-                        # B. Aggregate data (for Merchant App compatibility, summarize by denomination)
-                        if denom_str in token_data_aggregated:
-                            token_data_aggregated[denom_str] += count
-                        else:
-                            token_data_aggregated[denom_str] = count
+                        # B. Structure data correctly (Nested by Tranche)
+                        if tranche_name not in token_data_structured:
+                            token_data_structured[tranche_name] = {}
+                        
+                        # We don't need to aggregate same denom from same tranche because form input is unique per tranche/denom
+                        token_data_structured[tranche_name][denom_str] = count
                             
                         # C. Calculate total value
                         total_value += int(denom_str) * count
@@ -284,14 +288,14 @@ def redeem_ui(household_id):
             
             # Save to database
             households[household_id]["active_token"] = token
-            households[household_id]["token_data"] = token_data_aggregated
+            households[household_id]["token_data"] = token_data_structured # Save structured data
             save_households()
             
             result = {
                 "success": True,
                 "message": "Token Generated Successfully!",
                 "token": token,
-                "vouchers": details_for_display, # Front-end shows detailed tranche info
+                "vouchers": details_for_display, 
                 "total_value": total_value
             }
 
@@ -393,7 +397,7 @@ def generate_token():
     """Generate redemption token"""
     data = request.get_json()
     household_id = data.get("household_id")
-    vouchers = data.get("vouchers")
+    vouchers = data.get("vouchers") # Expected: {Tranche: {Denom: Count}}
     
     if not household_id or not vouchers:
         return jsonify({"error": "household_id and vouchers required"}), 400
@@ -405,7 +409,19 @@ def generate_token():
     
     # Generate token
     token = "TXN-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    total = sum(int(d) * int(c) for d, c in vouchers.items())
+    
+    # Calculate total - Handle both flat (legacy) and nested (new) structures for robustness
+    total = 0
+    # Check if vouchers is nested
+    is_nested = any(isinstance(v, dict) for v in vouchers.values())
+    
+    if is_nested:
+        for tranche, denoms in vouchers.items():
+            for d, c in denoms.items():
+                total += int(d) * int(c)
+    else:
+        # Fallback for flat structure (though we should move away from this)
+        total = sum(int(d) * int(c) for d, c in vouchers.items())
     
     # Save token
     households[household_id]["active_token"] = token
@@ -425,113 +441,102 @@ def generate_token():
 def redeem_token():
     """Redeem token at merchant"""
     print("\n" + "="*50)
-    print("🔍 REDEEM TOKEN REQUEST")
+    print("🔍 REDEEM TOKEN REQUEST (MOBILE/API)")
     print("="*50)
     
     data = request.get_json(silent=True)
-    print(f"Request data: {data}")
-    
     token = data.get("token") if data else None
     merchant_id = data.get("merchant_id") if data else None
     
-    print(f"Token: {token}")
-    print(f"Merchant ID: {merchant_id}")
-    
     if not token or not merchant_id:
-        print("❌ Missing token or merchant_id")
         return jsonify({"error": "token and merchant_id required"}), 400
     
     load_households()
     load_merchants()
-    
-    print(f"Loaded {len(households)} households")
     
     # Find household with token
     target_household = None
     token_data = None
     
     for hid, h in households.items():
-        active_token = h.get("active_token")
-        if active_token:
-            print(f"  Household {hid}: token={active_token}")
-            if active_token == token:
-                target_household = hid
-                token_data = h.get("token_data")
-                print(f"  ✅ MATCH FOUND!")
-                break
+        if h.get("active_token") == token:
+            target_household = hid
+            token_data = h.get("token_data")
+            break
     
     if not target_household or not token_data:
-        print("❌ Token not found or expired")
         return jsonify({"error": "Invalid or expired token"}), 400
     
-    print(f"✅ Found household: {target_household}")
-    print(f"Token data: {token_data}")
+    # Calculate total and Prepare CSV Data
+    total_amount = 0
+    voucher_list_for_csv = []
     
-    # Calculate total
-    total_amount = sum(int(d) * int(c) for d, c in token_data.items())
-    print(f"Total amount: ${total_amount}")
-    
-    # Deduct vouchers
     household = households[target_household]
-    for denom, count in token_data.items():
-        denom = str(denom)
-        count = int(count)
-        for tranche in household.get("vouchers", {}).values():
-            if denom in tranche:
-                old_count = tranche[denom]
-                tranche[denom] = max(0, tranche[denom] - count)
-                print(f"  Deducted ${denom}: {old_count} -> {tranche[denom]}")
-                break
     
+    # Check structure of token_data
+    # We expect { "Jan2026": { "10": 1 } }
+    
+    # Deduct Logic
+    for tranche_name, vouchers in token_data.items():
+        if tranche_name not in household.get("vouchers", {}):
+            continue
+            
+        for denom, count in vouchers.items():
+            denom = str(denom)
+            count = int(count)
+            total_amount += int(denom) * count
+            
+            # Prepare CSV list
+            for _ in range(count):
+                voucher_list_for_csv.append(int(denom))
+                
+            # Deduct
+            if denom in household["vouchers"][tranche_name]:
+                household["vouchers"][tranche_name][denom] = max(0, household["vouchers"][tranche_name][denom] - count)
+
     # Clear token
     households[target_household]["active_token"] = None
     households[target_household]["token_data"] = None
     save_households()
-    print("✅ Token cleared and households saved")
     
-    # Get merchant name
     merchant_name = merchants.get(merchant_id, {}).get("merchant_name", "Merchant")
-    print(f"Merchant name: {merchant_name}")
     
-    # ✅ LOG TO CSV FILE - HOURLY BASIS
-    os.makedirs("storage/redemptions", exist_ok=True)
-    now = datetime.now()
-    csv_filename = f"storage/redemptions/Redeem{now.strftime('%Y%m%d%H')}.csv"
-    transaction_id = f"TX-{now.strftime('%Y%m%d%H%M%S')}"
-    
-    # Format vouchers for CSV: all denominations in one row
-    voucher_details = ", ".join([f"${d}x{c}" for d, c in sorted(token_data.items(), key=lambda x: int(x[0]))])
-    
-    # Prepare CSV row data
-    csv_row = [
-        transaction_id,
-        target_household,
-        merchant_id,
-        now.strftime("%Y%m%d%H%M%S"),
-        token,  # Include the token used
-        voucher_details,  # All vouchers redeemed
-        total_amount,
-        "Completed",
-        ""  # Remark column
-    ]
-    
-    # Write to CSV
+    # ✅ LOG TO CSV FILE - UNIFIED FORMAT WITH WEB UI
     try:
-        print(f"\n📝 CSV LOGGING DEBUG:")
-        print(f"   File: {csv_filename}")
-        print(f"   Row data: {csv_row}")
+        os.makedirs("storage/redemptions", exist_ok=True)
+        now = datetime.now()
+        csv_filename = f"storage/redemptions/Redeem{now.strftime('%Y%m%d%H')}.csv"
+        csv_path = os.path.join(csv_filename) # Reuse path var
+        file_exists = os.path.exists(csv_path)
+
+        txn_id = f"TX{now.strftime('%Y%m%d%H%M%S')}"
+        txn_time_str = now.strftime("%Y-%m-%d-%H%M%S")
         
-        with open(csv_filename, "a", newline="", encoding='utf-8') as f:
+        # Sort for consistency
+        voucher_list_for_csv.sort()
+        
+        with open(csv_path, mode="a", newline="", encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(csv_row)
-            f.flush()  # Force write to disk
-        
-        # Verify file was written
-        if os.path.exists(csv_filename):
-            file_size = os.path.getsize(csv_filename)
-            print(f"✅ Logged to CSV: {csv_filename} (size: {file_size} bytes)")
-        else:
-            print(f"⚠️ CSV file not found after write!")
+            # Write Header if new file
+            if not file_exists:
+                writer.writerow([
+                    "Transaction_ID", "Household_ID", "Merchant_ID", 
+                    "Transaction_Date_Time", "Voucher_Code", "Denomination_Used", 
+                    "Amount_Redeemed", "Payment_Status", "Remarks"
+                ])
+            
+            total_items = len(voucher_list_for_csv)
+            for index, denom_val in enumerate(voucher_list_for_csv):
+                remark = "Final denomination used" if index == total_items - 1 else str(index + 1)
+                v_code = f"V{target_household[-4:]}{str(index+1).zfill(3)}"
+                
+                writer.writerow([
+                    txn_id, target_household, merchant_id, txn_time_str,
+                    v_code, f"${denom_val}.00", f"${total_amount}.00",
+                    "Completed", remark
+                ])
+                
+        print(f"✅ Logged to CSV: {csv_filename}")
             
     except Exception as e:
         print(f"⚠️ CSV logging failed: {e}")
@@ -539,19 +544,12 @@ def redeem_token():
         traceback.print_exc()
     
     # Create notification
-    try:
-        create_redemption_notification(
-            household_id=target_household,
-            amount=total_amount,
-            vouchers=token_data,
-            merchant_name=merchant_name
-        )
-        print("✅ Notification created")
-    except Exception as e:
-        print(f"⚠️ Notification failed: {e}")
-    
-    print(f"✅ Redeemed {token} for ${total_amount} at {merchant_name}")
-    print("="*50 + "\n")
+    create_redemption_notification(
+        household_id=target_household,
+        amount=total_amount,
+        vouchers=token_data,
+        merchant_name=merchant_name
+    )
     
     return jsonify({
         "success": True,
