@@ -1,6 +1,7 @@
 """
 CDC Household App - API Version
 Enhanced with dynamic member addition and validation
+FIXED: Voucher selection logic now handles multiple tranches correctly without conflict.
 """
 import flet as ft
 import time
@@ -43,6 +44,7 @@ def main(page: ft.Page):
         page.update()
         return
     
+    # FIXED: selected_vouchers is now a nested dict: { "TrancheName": { "Denom": Count } }
     session = {"user_id": None, "selected_vouchers": {}, "members": []}
 
     def show_snack(text, color="blue"):
@@ -81,6 +83,7 @@ def main(page: ft.Page):
             if status == 200:
                 session["user_id"] = uid
                 vouchers = response.get("vouchers", {})
+                # Check if there is any voucher in any tranche
                 has_vouchers = any(any(count > 0 for count in tranche.values()) for tranche in vouchers.values())
                 
                 if has_vouchers:
@@ -113,91 +116,55 @@ def main(page: ft.Page):
             ft.TextButton("New Household? Register Here", on_click=lambda _: register_view())
         ], horizontal_alignment="center", spacing=10)
 
-    # REGISTER VIEW WITH DYNAMIC MEMBER ADDITION
+    # REGISTER VIEW
     def register_view():
         page.controls.clear()
         
-        # Members list container
         members_column = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
         postal_input = ft.TextField(label="Postal Code (6 digits)*", width=350, max_length=6)
         postal_error = ft.Text("", size=12, color="red", visible=False)
         result_container = ft.Column(horizontal_alignment="center", spacing=10)
         
         def add_member_card(first_name="", last_name="", is_first=False):
-            """Add a member input card"""
-            first_name_input = ft.TextField(
-                label="First Name*",
-                value=first_name,
-                width=160,
-                border_color="#3b82f6"
-            )
-            last_name_input = ft.TextField(
-                label="Last Name*",
-                value=last_name,
-                width=160,
-                border_color="#3b82f6"
-            )
+            first_name_input = ft.TextField(label="First Name*", value=first_name, width=140, border_color="#3b82f6")
+            last_name_input = ft.TextField(label="Last Name*", value=last_name, width=140, border_color="#3b82f6")
             
             member_card = ft.Container(
-                padding=10,
-                border_radius=8,
-                bgcolor="#f0f9ff",
-                border=ft.border.all(1, "#3b82f6"),
-                width=350,
+                padding=10, border_radius=8, bgcolor="#f0f9ff", border=ft.border.all(1, "#3b82f6"), width=350,
                 content=ft.Column([
                     ft.Row([
                         ft.Icon("person", color="#3b82f6", size=20),
-                        ft.Text(f"Member {len(session['members']) + 1}", 
-                               size=14, weight="bold", color="#1e40af", expand=True),
-                        ft.IconButton(
-                            icon="delete",
-                            icon_color="red",
-                            icon_size=20,
-                            visible=not is_first,  # Can't delete first member
-                            on_click=lambda e: remove_member(member_card)
-                        ) if not is_first else ft.Container()
+                        ft.Text(f"Member {len(session['members']) + 1}", size=14, weight="bold", color="#1e40af", expand=True),
+                        ft.IconButton(icon="delete", icon_color="red", icon_size=20, visible=not is_first, 
+                                    on_click=lambda e: remove_member(member_card)) if not is_first else ft.Container()
                     ], alignment="spaceBetween"),
-                    ft.Row([
-                        first_name_input,
-                        last_name_input
-                    ], spacing=10)
+                    ft.Row([first_name_input, last_name_input], spacing=10)
                 ], spacing=5)
             )
-            
-            # Store references
-            member_card.data = {
-                "first_name": first_name_input,
-                "last_name": last_name_input
-            }
-            
+            member_card.data = {"first_name": first_name_input, "last_name": last_name_input}
             members_column.controls.append(member_card)
             update_member_numbers()
             page.update()
         
         def remove_member(member_card):
-            """Remove a member card"""
             members_column.controls.remove(member_card)
             update_member_numbers()
             page.update()
         
         def update_member_numbers():
-            """Update member numbers after add/remove"""
             for idx, card in enumerate(members_column.controls):
-                # Update the member number text
                 if hasattr(card, 'content') and hasattr(card.content, 'controls'):
-                    row = card.content.controls[0]  # First row with number
+                    row = card.content.controls[0]
                     if len(row.controls) >= 2:
                         row.controls[1].value = f"Member {idx + 1}"
         
         def add_another_member(e):
-            """Add another member input"""
             if len(members_column.controls) >= 10:
                 show_snack("Maximum 10 members allowed", "orange")
                 return
             add_member_card()
         
         def validate_postal(e):
-            """Validate postal code as user types"""
             is_valid, error_msg = validate_singapore_postal_code(postal_input.value)
             if postal_input.value and not is_valid:
                 postal_error.value = error_msg
@@ -211,7 +178,6 @@ def main(page: ft.Page):
         postal_input.on_change = validate_postal
 
         def submit_registration(e):
-            # Validate postal code
             is_valid, error_msg = validate_singapore_postal_code(postal_input.value)
             if not is_valid:
                 show_snack(error_msg, "red")
@@ -221,27 +187,19 @@ def main(page: ft.Page):
                 page.update()
                 return
             
-            # Collect all members
             members = []
             has_error = False
-            
             for card in members_column.controls:
                 first_name = card.data["first_name"].value.strip()
                 last_name = card.data["last_name"].value.strip()
-                
                 if not first_name or not last_name:
                     show_snack("Please fill in all member names", "red")
                     has_error = True
                     break
-                
-                # Store as "FirstName LastName"
-                full_name = f"{first_name} {last_name}"
-                members.append(full_name)
+                members.append(f"{first_name} {last_name}")
             
-            if has_error or not members:
-                return
+            if has_error or not members: return
             
-            # Make API call
             response, status = api_client.register_household(members, postal_input.value)
             
             if status == 200:
@@ -259,15 +217,11 @@ def main(page: ft.Page):
                                               content=ft.Text(new_id, size=28, weight="bold", color="black", selectable=True)),
                                    ft.Text("Please SAVE this ID now!", color="red", italic=True, size=12),
                                    ft.Container(height=10),
-                                   ft.Container(
-                                       padding=10,
-                                       bgcolor="#f0f9ff",
-                                       border_radius=8,
+                                   ft.Container(padding=10, bgcolor="#f0f9ff", border_radius=8,
                                        content=ft.Column([
                                            ft.Text("Registered Members:", size=12, weight="bold"),
                                            ft.Text(", ".join(members), size=11, color="#1e40af")
-                                       ], spacing=5)
-                                   ),
+                                       ], spacing=5)),
                                    ft.Container(height=20),
                                    ft.ElevatedButton("Claim Your Vouchers", on_click=lambda _: claim_vouchers_view(),
                                                    bgcolor="blue", color="white", width=280, height=50)
@@ -277,7 +231,6 @@ def main(page: ft.Page):
                 show_snack(f"Error: {response.get('error', 'Failed')}", "red")
             page.update()
 
-        # Add first member by default
         add_member_card(is_first=True)
         
         page.add(
@@ -288,42 +241,14 @@ def main(page: ft.Page):
                 ft.Text("Household Registration", size=20, weight="bold"),
                 ft.Text("Add all household members", size=14, color="grey"),
                 ft.Container(height=10),
-                
-                # Members section
-                ft.Container(
-                    padding=10,
-                    bgcolor="white",
-                    border_radius=10,
-                    width=350,
+                ft.Container(padding=10, bgcolor="white", border_radius=10, width=350,
                     content=ft.Column([
-                        ft.Row([
-                            ft.Icon("group", color="#3b82f6", size=24),
-                            ft.Text("Household Members", size=16, weight="bold", color="#1e40af", expand=True),
-                        ]),
-                        ft.Container(height=5),
-                        members_column,
-                        ft.Container(height=10),
-                        ft.OutlinedButton(
-                            "➕ Add Another Member",
-                            on_click=add_another_member,
-                            width=330,
-                            style=ft.ButtonStyle(
-                                color="#3b82f6",
-                                side=ft.BorderSide(2, "#3b82f6")
-                            )
-                        )
-                    ], spacing=10)
-                ),
-                
-                ft.Container(height=10),
-                
-                # Postal code section
-                postal_input,
-                postal_error,
-                
-                ft.Container(height=10),
-                ft.ElevatedButton("Register Household", on_click=submit_registration, 
-                                width=350, height=50, bgcolor="#3b82f6", color="white"),
+                        ft.Row([ft.Icon("group", color="#3b82f6", size=24), ft.Text("Household Members", size=16, weight="bold", color="#1e40af", expand=True)]),
+                        ft.Container(height=5), members_column, ft.Container(height=10),
+                        ft.OutlinedButton("➕ Add Another Member", on_click=add_another_member, width=330, style=ft.ButtonStyle(color="#3b82f6", side=ft.BorderSide(2, "#3b82f6")))
+                    ], spacing=10)),
+                ft.Container(height=10), postal_input, postal_error, ft.Container(height=10),
+                ft.ElevatedButton("Register Household", on_click=submit_registration, width=350, height=50, bgcolor="#3b82f6", color="white"),
                 result_container
             ], horizontal_alignment="center", spacing=15, scroll=ft.ScrollMode.AUTO)
         )
@@ -334,16 +259,15 @@ def main(page: ft.Page):
         page.controls.clear()
         
         schemes = {
-            "Jan2026": {"2": 30, "5": 20, "10": 14},
-            "Feb2026": {"2": 35, "5": 25, "10": 18},
+            "May2025": {"2": 50, "5": 20, "10": 30},
+            "Jan2026": {"2": 30, "5": 12, "10": 18},
         }
         
         def claim_scheme(scheme_name, vouchers):
             response, status = api_client.claim_vouchers(session["user_id"], scheme_name)
-            
             if status == 200:
                 show_snack(f"Successfully claimed {scheme_name}!", "green")
-                claim_vouchers_view()  # Refresh
+                claim_vouchers_view()
             else:
                 error = response.get("error", "Failed")
                 if "already" in error.lower():
@@ -351,7 +275,6 @@ def main(page: ft.Page):
                 else:
                     show_snack(f"Error: {error}", "red")
         
-        # Get current claimed vouchers
         response, status = api_client.get_balance(session["user_id"])
         existing_vouchers = response.get("vouchers", {}) if status == 200 else {}
         
@@ -380,19 +303,11 @@ def main(page: ft.Page):
                         ]) for denom, count in vouchers_dict.items()
                     ], spacing=8),
                     ft.Divider(),
-                    ft.Row([
-                        ft.Text("Total Value:", size=16, weight="bold"),
-                        ft.Text(f"${total_value}", size=20, weight="bold", color="#10b981")
-                    ], alignment="spaceBetween"),
+                    ft.Row([ft.Text("Total Value:", size=16, weight="bold"), ft.Text(f"${total_value}", size=20, weight="bold", color="#10b981")], alignment="spaceBetween"),
                     ft.Container(height=10),
-                    ft.ElevatedButton(
-                        "✓ Already Claimed" if is_claimed else "Claim Vouchers",
+                    ft.ElevatedButton("✓ Already Claimed" if is_claimed else "Claim Vouchers",
                         on_click=lambda e: claim_scheme(name, vouchers_dict),
-                        width=310, height=45,
-                        bgcolor="#9ca3af" if is_claimed else "#3b82f6",
-                        color="white",
-                        disabled=is_claimed
-                    )
+                        width=310, height=45, bgcolor="#9ca3af" if is_claimed else "#3b82f6", color="white", disabled=is_claimed)
                 ], horizontal_alignment="center")
             )
             return card_content
@@ -400,16 +315,13 @@ def main(page: ft.Page):
         has_any_claimed = len(existing_vouchers) > 0
         
         page.add(
-            ft.AppBar(
-                title=ft.Row([ft.Text("🎫", size=24), ft.Text("Claim Vouchers", size=18, weight="bold")], spacing=10),
+            ft.AppBar(title=ft.Row([ft.Text("🎫", size=24), ft.Text("Claim Vouchers", size=18, weight="bold")], spacing=10),
                 center_title=True, bgcolor="#3b82f6", color="white",
                 leading=ft.IconButton(icon="home", on_click=lambda _: logout() if not has_any_claimed else None, icon_color="white"),
                 actions=[
-                    ft.IconButton(icon="account_balance_wallet", on_click=lambda _: household_dashboard(),
-                                tooltip="View Balance", icon_color="white") if has_any_claimed else ft.Container(),
+                    ft.IconButton(icon="account_balance_wallet", on_click=lambda _: household_dashboard(), tooltip="View Balance", icon_color="white") if has_any_claimed else ft.Container(),
                     ft.IconButton(icon="logout", on_click=lambda _: logout(), icon_color="white")
-                ]
-            ),
+                ]),
             ft.Column([
                 ft.Container(height=10),
                 ft.Text("Available Voucher Schemes", size=20, weight="bold", color="#1f2937"),
@@ -417,31 +329,18 @@ def main(page: ft.Page):
                 ft.Container(height=20),
                 *[scheme_card(name, vouchers) for name, vouchers in schemes.items()],
                 ft.Container(height=20),
-                # Show "Go to My Vouchers" button if any vouchers claimed
-                ft.Container(
-                    content=ft.ElevatedButton(
-                        "🎫 Go to My Vouchers",
-                        on_click=lambda _: household_dashboard(),
-                        width=350,
-                        height=50,
-                        bgcolor="#10b981",
-                        color="white",
-                        style=ft.ButtonStyle(text_style=ft.TextStyle(size=16, weight="bold"))
-                    ),
-                    padding=ft.padding.only(bottom=20)
-                ) if has_any_claimed else ft.Container(),
+                ft.Container(content=ft.ElevatedButton("🎫 Go to My Vouchers", on_click=lambda _: household_dashboard(), width=350, height=50, bgcolor="#10b981", color="white", style=ft.ButtonStyle(text_style=ft.TextStyle(size=16, weight="bold"))), padding=ft.padding.only(bottom=20)) if has_any_claimed else ft.Container(),
             ], horizontal_alignment="center", spacing=15, scroll=ft.ScrollMode.AUTO)
         )
         page.update()
 
-    # HOUSEHOLD DASHBOARD
+    # HOUSEHOLD DASHBOARD (FIXED SELECTION LOGIC)
     def household_dashboard():
         page.controls.clear()
         
         response, status = api_client.get_balance(session["user_id"])
         vouchers = response.get("vouchers", {}) if status == 200 else {}
         
-        # Check for notifications
         def check_notifications_once():
             notif_response, notif_status = api_client.get_notifications(session["user_id"])
             if notif_status == 200:
@@ -459,22 +358,38 @@ def main(page: ft.Page):
         code_display_container = ft.Container()
         
         def refresh_summary():
-            total = sum(int(d) * c for d, c in session["selected_vouchers"].items())
+            # Iterate nested dict: Tranche -> Denom -> Count
+            total = 0
+            for tranche, denoms in session["selected_vouchers"].items():
+                for d, c in denoms.items():
+                    total += int(d) * c
             summary_text.value = f"Total Selected: ${total}"
             page.update()
 
-        def update_count(denom, delta, max_limit, count_text):
+        # FIXED: Added tranche argument to separate counts by batch
+        def update_count(tranche, denom, delta, max_limit, count_text):
             denom_str = str(denom)
-            current = session["selected_vouchers"].get(denom_str, 0)
+            
+            # Initialize tranche dict if not present
+            if tranche not in session["selected_vouchers"]:
+                session["selected_vouchers"][tranche] = {}
+
+            current = session["selected_vouchers"][tranche].get(denom_str, 0)
             new_val = current + delta
+            
             if 0 <= new_val <= max_limit:
                 if new_val == 0:
-                    session["selected_vouchers"].pop(denom_str, None)
+                    session["selected_vouchers"][tranche].pop(denom_str, None)
+                    # Cleanup empty tranche dicts
+                    if not session["selected_vouchers"][tranche]:
+                        del session["selected_vouchers"][tranche]
                 else:
-                    session["selected_vouchers"][denom_str] = new_val
+                    session["selected_vouchers"][tranche][denom_str] = new_val
+                
                 count_text.value = str(new_val)
                 refresh_summary()
 
+        # Build UI with unique references
         for tranche_name, denoms in vouchers.items():
             if not any(denoms.values()):
                 continue
@@ -486,49 +401,69 @@ def main(page: ft.Page):
                 if max_count == 0:
                     continue
                 denom_str = str(denom)
-                current_sel = session["selected_vouchers"].get(denom_str, 0)
+                
+                # Get current selection SAFELEY using nested get
+                current_sel = 0
+                if tranche_name in session["selected_vouchers"]:
+                    current_sel = session["selected_vouchers"][tranche_name].get(denom_str, 0)
+                
                 count_display = ft.Text(str(current_sel), size=20, width=40, text_align="center")
                 
+                # FIXED: Lambda captures tr=tranche_name to lock the value
                 vouchers_column.controls.append(
                     ft.Container(padding=10, border=ft.border.all(1, "#e5e7eb"), border_radius=10,
                                bgcolor="white", width=350,
                                content=ft.Row([
                                    ft.Text(f"${denom}", size=24, weight="bold", width=60),
                                    ft.Column([ft.Text(f"Available: {max_count}", size=12, color="grey")], expand=True),
-                                   ft.IconButton(icon="remove", on_click=lambda e, d=denom_str, m=max_count, t=count_display: update_count(d, -1, m, t)),
+                                   ft.IconButton(icon="remove", on_click=lambda e, tr=tranche_name, d=denom_str, m=max_count, t=count_display: update_count(tr, d, -1, m, t)),
                                    count_display,
-                                   ft.IconButton(icon="add", on_click=lambda e, d=denom_str, m=max_count, t=count_display: update_count(d, 1, m, t)),
+                                   ft.IconButton(icon="add", on_click=lambda e, tr=tranche_name, d=denom_str, m=max_count, t=count_display: update_count(tr, d, 1, m, t)),
                                ], alignment="spaceBetween"))
                 )
 
         def generate_qr(e):
             selected = session["selected_vouchers"]
-            if not selected or all(v == 0 for v in selected.values()):
+            # Validate nested structure
+            if not selected:
                 show_snack("Please select at least one voucher", "red")
                 return
             
-            total = sum(int(d) * c for d, c in selected.items())
-            if total == 0:
+            # Calculate total and validate structure
+            total = 0
+            has_items = False
+            for tr, denoms in selected.items():
+                for d, c in denoms.items():
+                    if c > 0:
+                        total += int(d) * c
+                        has_items = True
+            
+            if not has_items or total == 0:
                 show_snack("Please select at least one voucher", "red")
                 return
             
-            for denom, count in selected.items():
-                if count > 0:
-                    found = False
-                    for tranche, denoms in vouchers.items():
-                        if denom in denoms and denoms[denom] >= count:
-                            found = True
-                            break
-                    if not found:
-                        show_snack(f"Insufficient ${denom} vouchers", "red")
+            # Double check balances (Client-side check)
+            for tr, denoms in selected.items():
+                for d, c in denoms.items():
+                    avail = vouchers.get(tr, {}).get(d, 0)
+                    if c > avail:
+                        show_snack(f"Insufficient ${d} vouchers in {tr}", "red")
                         return
-            
+
+            # API Call - sends the NESTED dict
             response, status = api_client.generate_token(session["user_id"], selected)
             
             if status == 200:
                 token = response["token"]
                 total = response["total"]
-                voucher_text = ", ".join([f"${d}×{c}" for d, c in sorted(selected.items(), key=lambda x: int(x[0]))])
+                
+                # Format voucher text to show Tranche info
+                details = []
+                for tr, denoms in selected.items():
+                    for d, c in denoms.items():
+                        details.append(f"{tr}: ${d}x{c}")
+                voucher_text = "\n".join(details)
+                
                 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
                 def copy_code(e):
@@ -540,7 +475,8 @@ def main(page: ft.Page):
                     code_display_container.visible = False
                     session["selected_vouchers"] = {}
                     refresh_summary()
-                    page.update()
+                    # Refresh entire dashboard to reset UI counters
+                    household_dashboard()
                 
                 code_display_container.content = ft.Container(
                     width=350, padding=20, bgcolor="white", border_radius=12,
@@ -568,7 +504,7 @@ def main(page: ft.Page):
                             content=ft.Column([
                                 ft.Text(f"Total: ${total}", size=20, weight="bold", color="#2e7d32"),
                                 ft.Container(height=5),
-                                ft.Text(f"Vouchers: {voucher_text}", size=12, color="grey"),
+                                ft.Text(voucher_text, size=11, color="grey", text_align="center"),
                             ], horizontal_alignment="center")
                         ),
                         ft.Container(height=5),
@@ -582,98 +518,68 @@ def main(page: ft.Page):
             else:
                 show_snack(f"❌ {response.get('error', 'Failed')}", "red")
 
-        # Transaction history view
+        # HISTORY VIEW
         def transaction_history_view():
             page.controls.clear()
-            
             response, status = api_client.get_transactions(session["user_id"], limit=20)
             transactions = response.get("transactions", []) if status == 200 else []
-            
             history_column = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
             
             if not transactions:
-                history_column.controls.append(
-                    ft.Container(
-                        padding=40,
-                        content=ft.Column([
-                            ft.Icon("receipt_long", size=60, color="grey"),
-                            ft.Text("No transactions yet", size=16, color="grey")
-                        ], horizontal_alignment="center")
-                    )
-                )
+                history_column.controls.append(ft.Container(padding=40, content=ft.Column([ft.Icon("receipt_long", size=60, color="grey"), ft.Text("No transactions yet", size=16, color="grey")], horizontal_alignment="center")))
             else:
                 for txn in transactions:
                     amount = txn.get("amount", 0)
                     merchant = txn.get("merchant_name", "Merchant")
                     timestamp = txn.get("datetime", "")
-                    vouchers = txn.get("vouchers", {})
-                    voucher_text = ", ".join([f"${d}×{c}" for d, c in sorted(vouchers.items(), key=lambda x: int(x[0]))])
+                    vouchers_data = txn.get("vouchers", {})
+                    
+                    # Handle display of potentially nested or flat voucher data
+                    details = []
+                    # Check if nested (Tranche -> Denom) or flat (Denom)
+                    is_nested = any(isinstance(v, dict) for v in vouchers_data.values())
+                    
+                    if is_nested:
+                        for tr, denoms in vouchers_data.items():
+                             for d, c in denoms.items():
+                                 details.append(f"{tr}: ${d}x{c}")
+                    else:
+                        for d, c in sorted(vouchers_data.items(), key=lambda x: int(x[0])):
+                            details.append(f"${d}x{c}")
+                            
+                    voucher_text = ", ".join(details)
                     
                     history_column.controls.append(
-                        ft.Container(
-                            padding=15,
-                            border_radius=10,
-                            bgcolor="white",
-                            border=ft.border.all(1, "#e5e7eb"),
-                            width=350,
+                        ft.Container(padding=15, border_radius=10, bgcolor="white", border=ft.border.all(1, "#e5e7eb"), width=350,
                             content=ft.Column([
-                                ft.Row([
-                                    ft.Icon("store", color="#10b981", size=24),
-                                    ft.Column([
-                                        ft.Text(merchant, size=16, weight="bold"),
-                                        ft.Text(timestamp, size=11, color="grey")
-                                    ], expand=True),
-                                    ft.Text(f"-${amount}", size=18, weight="bold", color="#dc2626")
-                                ], alignment="spaceBetween"),
+                                ft.Row([ft.Icon("store", color="#10b981", size=24), ft.Column([ft.Text(merchant, size=16, weight="bold"), ft.Text(timestamp, size=11, color="grey")], expand=True), ft.Text(f"-${amount}", size=18, weight="bold", color="#dc2626")], alignment="spaceBetween"),
                                 ft.Container(height=5),
-                                ft.Container(
-                                    padding=8,
-                                    bgcolor="#f0f9ff",
-                                    border_radius=6,
-                                    content=ft.Text(f"Vouchers: {voucher_text}", size=11, color="#1e40af")
-                                )
-                            ], spacing=5)
-                        )
+                                ft.Container(padding=8, bgcolor="#f0f9ff", border_radius=6, content=ft.Text(f"Vouchers: {voucher_text}", size=11, color="#1e40af"))
+                            ], spacing=5))
                     )
             
             page.add(
-                ft.AppBar(
-                    title=ft.Row([ft.Text("📜", size=24), ft.Text("Transaction History", size=18, weight="bold")], spacing=10),
+                ft.AppBar(title=ft.Row([ft.Text("📜", size=24), ft.Text("Transaction History", size=18, weight="bold")], spacing=10),
                     center_title=True, bgcolor="#3b82f6", color="white",
                     leading=ft.IconButton(icon="arrow_back", on_click=lambda _: household_dashboard(), icon_color="white"),
                     actions=[ft.IconButton(icon="logout", on_click=lambda _: logout(), icon_color="white")]
                 ),
-                ft.Column([
-                    ft.Container(height=10),
-                    history_column
-                ], horizontal_alignment="center", scroll=ft.ScrollMode.AUTO)
+                ft.Column([ft.Container(height=10), history_column], horizontal_alignment="center", scroll=ft.ScrollMode.AUTO)
             )
             page.update()
 
         page.add(
-            ft.AppBar(
-                title=ft.Row([ft.Text("🎫", size=24), ft.Text("My Vouchers", size=18, weight="bold")], spacing=10),
+            ft.AppBar(title=ft.Row([ft.Text("🎫", size=24), ft.Text("My Vouchers", size=18, weight="bold")], spacing=10),
                 center_title=True, bgcolor="#3b82f6", color="white",
                 leading=ft.IconButton(icon="arrow_back", on_click=lambda _: claim_vouchers_view(), icon_color="white"),
                 actions=[
-                    ft.IconButton(icon="receipt_long", on_click=lambda _: transaction_history_view(),
-                                tooltip="Transaction History", icon_color="white"),
-                    ft.IconButton(icon="refresh", on_click=lambda _: household_dashboard(),
-                                tooltip="Refresh Balance", icon_color="white"),
+                    ft.IconButton(icon="receipt_long", on_click=lambda _: transaction_history_view(), tooltip="Transaction History", icon_color="white"),
+                    ft.IconButton(icon="refresh", on_click=lambda _: household_dashboard(), tooltip="Refresh Balance", icon_color="white"),
                     ft.IconButton(icon="logout", on_click=lambda _: logout(), icon_color="white")
-                ]
-            ),
+                ]),
             ft.Container(content=vouchers_column, expand=True, padding=10, alignment=ft.alignment.top_center),
-            ft.Container(
-                padding=20, bgcolor="white", border=ft.border.only(top=ft.BorderSide(1, "#eee")),
-                content=ft.Column([
-                    summary_text,
-                    ft.ElevatedButton("Generate QR Code", on_click=generate_qr, width=350, height=50,
-                                    bgcolor="blue", color="white"),
-                    ft.Container(height=10),
-                    code_display_container
-                ], horizontal_alignment="center")
-            )
+            ft.Container(padding=20, bgcolor="white", border=ft.border.only(top=ft.BorderSide(1, "#eee")),
+                content=ft.Column([summary_text, ft.ElevatedButton("Generate Redemption Code", on_click=generate_qr, width=350, height=50, bgcolor="blue", color="white"), ft.Container(height=10), code_display_container], horizontal_alignment="center"))
         )
         page.update()
 

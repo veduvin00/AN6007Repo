@@ -1,6 +1,7 @@
 """
 CDC Merchant App - Enhanced with Validation
 UEN, Bank Code, and other field validations
+FIXED: Voucher display logic updated to handle nested Tranche structure.
 """
 import flet as ft
 import re
@@ -739,11 +740,10 @@ def main(page: ft.Page):
             
             if status == 200:
                 total_amt = response["amount"]
-                vouchers = response["vouchers"]
+                vouchers_data = response["vouchers"] # Can be nested {Tranche: {Denom: Count}} or flat
                 household_id = response["household_id"]
                 
                 print(f"✅ Success! ${total_amt}")
-                print(f"{'='*50}\n")
                 
                 # Add to local transaction history
                 session["transactions"].append({
@@ -756,13 +756,25 @@ def main(page: ft.Page):
                 # Clear input
                 token_input.value = ""
                 
-                # Show success message on screen
+                # Show success message
                 show_snack(f"✅ Successfully redeemed ${total_amt}!", "green")
                 
-                # Voucher breakdown
-                voucher_text = ", ".join([f"${d}×{c}" for d, c in sorted(vouchers.items(), key=lambda x: int(x[0]))])
+                # FIXED: Generate voucher breakdown text robustly (handling nested dicts)
+                details = []
+                # Check if nested (Tranche -> Denom) or flat (Denom)
+                is_nested = any(isinstance(v, dict) for v in vouchers_data.values())
                 
-                # Rebuild page with success message displayed
+                if is_nested:
+                    for tr, denoms in vouchers_data.items():
+                            for d, c in denoms.items():
+                                details.append(f"{tr}: ${d}x{c}")
+                else:
+                    for d, c in sorted(vouchers_data.items(), key=lambda x: int(x[0])):
+                        details.append(f"${d}x{c}")
+                
+                voucher_text = "\n".join(details)
+                
+                # Rebuild page with success message
                 page.controls.clear()
                 
                 page.add(
@@ -816,7 +828,7 @@ def main(page: ft.Page):
                                     border=ft.border.all(1, "#10b981"),
                                     content=ft.Column([
                                         ft.Text("Vouchers Used", size=12, weight="bold", color="#065f46"),
-                                        ft.Text(voucher_text, size=16, color="#059669", weight="bold")
+                                        ft.Text(voucher_text, size=14, color="#059669", weight="bold", text_align="center")
                                     ], horizontal_alignment="center", spacing=5)
                                 ),
                                 
@@ -888,7 +900,6 @@ def main(page: ft.Page):
                 )
                 
                 page.update()
-                print("✅ Success screen displayed!")
             else:
                 error = response.get("error", "Unknown error")
                 print(f"❌ {error}\n")
