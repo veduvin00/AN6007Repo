@@ -467,6 +467,219 @@ def main(page: ft.Page):
         )
         page.update()
 
+    # ANALYTICS DASHBOARD
+    def analytics_dashboard():
+        page.controls.clear()
+        
+        # Read all CSV files from storage/redemptions
+        import csv
+        import os
+        from datetime import datetime
+        
+        all_transactions = []
+        merchant_transactions = []
+        
+        redemptions_dir = "storage/redemptions"
+        
+        if os.path.exists(redemptions_dir):
+            csv_files = [f for f in os.listdir(redemptions_dir) if f.endswith('.csv')]
+            
+            for csv_file in csv_files:
+                filepath = os.path.join(redemptions_dir, csv_file)
+                try:
+                    with open(filepath, 'r') as f:
+                        reader = csv.reader(f)
+                        for row in reader:
+                            if len(row) >= 7:  # Ensure valid row
+                                transaction_id = row[0]
+                                household_id = row[1]
+                                merchant_id = row[2]
+                                timestamp = row[3]
+                                token = row[4]
+                                voucher_details = row[5]
+                                total_amount = int(row[6]) if row[6].isdigit() else 0
+                                
+                                all_transactions.append({
+                                    "transaction_id": transaction_id,
+                                    "household_id": household_id,
+                                    "merchant_id": merchant_id,
+                                    "timestamp": timestamp,
+                                    "token": token,
+                                    "voucher_details": voucher_details,
+                                    "amount": total_amount
+                                })
+                                
+                                # Filter for current merchant
+                                if merchant_id == session["merchant_id"]:
+                                    merchant_transactions.append({
+                                        "transaction_id": transaction_id,
+                                        "household_id": household_id,
+                                        "timestamp": timestamp,
+                                        "token": token,
+                                        "voucher_details": voucher_details,
+                                        "amount": total_amount,
+                                        "time": datetime.strptime(timestamp, "%Y%m%d%H%M%S").strftime("%H:%M:%S") if len(timestamp) == 14 else timestamp
+                                    })
+                except Exception as e:
+                    print(f"Error reading {csv_file}: {e}")
+        
+        # Calculate analytics from merchant transactions
+        total_transactions = len(merchant_transactions)
+        total_revenue = sum(txn["amount"] for txn in merchant_transactions)
+        
+        # Today's transactions
+        today = datetime.now().strftime("%Y%m%d")
+        today_transactions = [txn for txn in merchant_transactions if txn["timestamp"].startswith(today)]
+        today_count = len(today_transactions)
+        today_revenue = sum(txn["amount"] for txn in today_transactions)
+        
+        # Average transaction value
+        avg_transaction = total_revenue / total_transactions if total_transactions > 0 else 0
+        
+        # Voucher amount breakdown
+        amount_breakdown = {}
+        for txn in merchant_transactions:
+            amount = txn["amount"]
+            if amount in amount_breakdown:
+                amount_breakdown[amount] += 1
+            else:
+                amount_breakdown[amount] = 1
+        
+        # Recent transactions list (last 10)
+        recent_txns = sorted(merchant_transactions, key=lambda x: x["timestamp"], reverse=True)[:10]
+        
+        # Stats cards
+        def stat_card(title, value, icon, color, subtitle=""):
+            return ft.Container(
+                width=165,
+                height=140,
+                padding=15,
+                border_radius=12,
+                bgcolor=f"{color}20",
+                border=ft.border.all(2, color),
+                content=ft.Column([
+                    ft.Icon(icon, color=color, size=35),
+                    ft.Container(height=5),
+                    ft.Text(title, size=11, color="grey", weight="bold"),
+                    ft.Text(str(value), size=28, weight="bold", color=color),
+                    ft.Text(subtitle, size=10, color="grey", italic=True) if subtitle else ft.Container()
+                ], horizontal_alignment="center", spacing=3)
+            )
+        
+        page.add(
+            ft.AppBar(
+                title=ft.Row([ft.Text("📊", size=24), ft.Text("Analytics Dashboard", size=18, weight="bold")], spacing=10),
+                center_title=True, bgcolor="#10b981", color="white",
+                leading=ft.IconButton(icon="arrow_back", on_click=lambda _: merchant_terminal(), icon_color="white"),
+                actions=[ft.IconButton(icon="logout", on_click=lambda _: logout(), icon_color="white")]
+            ),
+            ft.Column([
+                ft.Container(height=20),
+                
+                # Title
+                ft.Text("Business Performance", size=22, weight="bold", color="#1f2937"),
+                ft.Text(f"Merchant: {session['merchant_name']}", size=14, color="grey"),
+                
+                ft.Container(height=20),
+                
+                # Stats row
+                ft.Row([
+                    stat_card("Total Revenue", f"${total_revenue}", "attach_money", "#10b981", "All time"),
+                    stat_card("Transactions", total_transactions, "receipt_long", "#3b82f6", "All time")
+                ], spacing=10, wrap=True),
+                
+                ft.Container(height=10),
+                
+                ft.Row([
+                    stat_card("Today's Sales", f"${today_revenue}", "trending_up", "#f59e0b", f"{today_count} transactions"),
+                    stat_card("Avg Transaction", f"${avg_transaction:.2f}", "payments", "#8b5cf6", "Per redemption")
+                ], spacing=10, wrap=True),
+                
+                ft.Container(height=25),
+                
+                # Voucher breakdown
+                ft.Container(
+                    width=350,
+                    padding=20,
+                    border_radius=12,
+                    bgcolor="#f9fafb",
+                    border=ft.border.all(1, "#e5e7eb"),
+                    content=ft.Column([
+                        ft.Row([
+                            ft.Icon("pie_chart", color="#10b981", size=24),
+                            ft.Text("Amount Breakdown", size=16, weight="bold", color="#1f2937")
+                        ]),
+                        ft.Divider(),
+                        ft.Column([
+                            ft.Row([
+                                ft.Container(
+                                    padding=8,
+                                    border_radius=6,
+                                    bgcolor="#10b981",
+                                    content=ft.Text(f"${amount}", size=14, weight="bold", color="white")
+                                ),
+                                ft.Text(f"{count} transactions", size=14, color="#6b7280", expand=True),
+                                ft.Text(f"${amount * count}", size=14, weight="bold", color="#059669")
+                            ], alignment="spaceBetween")
+                            for amount, count in sorted(amount_breakdown.items(), reverse=True)
+                        ], spacing=8) if amount_breakdown else ft.Text("No transactions yet", color="grey", italic=True)
+                    ], spacing=10)
+                ),
+                
+                ft.Container(height=25),
+                
+                # Recent transactions
+                ft.Container(
+                    width=350,
+                    padding=20,
+                    border_radius=12,
+                    bgcolor="#f9fafb",
+                    border=ft.border.all(1, "#e5e7eb"),
+                    content=ft.Column([
+                        ft.Row([
+                            ft.Icon("history", color="#3b82f6", size=24),
+                            ft.Text("Recent Transactions", size=16, weight="bold", color="#1f2937")
+                        ]),
+                        ft.Divider(),
+                        ft.Column([
+                            ft.Container(
+                                padding=12,
+                                border_radius=8,
+                                bgcolor="#ffffff",
+                                border=ft.border.all(1, "#e5e7eb"),
+                                content=ft.Row([
+                                    ft.Column([
+                                        ft.Text(f"${txn['amount']}", size=18, weight="bold", color="#059669"),
+                                        ft.Text(txn['time'], size=10, color="grey")
+                                    ], spacing=2),
+                                    ft.Column([
+                                        ft.Text(txn['token'][:12] + "...", size=11, color="#6b7280"),
+                                        ft.Text(txn['household_id'][:15] + "...", size=10, color="grey")
+                                    ], spacing=2, horizontal_alignment="end")
+                                ], alignment="spaceBetween")
+                            )
+                            for txn in recent_txns
+                        ], spacing=8) if recent_txns else ft.Text("No transactions yet", color="grey", italic=True)
+                    ], spacing=10)
+                ),
+                
+                ft.Container(height=20),
+                
+                # Back to terminal button
+                ft.ElevatedButton(
+                    "🏪 Back to Terminal",
+                    on_click=lambda _: merchant_terminal(),
+                    width=350,
+                    height=50,
+                    bgcolor="#10b981",
+                    color="white",
+                    style=ft.ButtonStyle(text_style=ft.TextStyle(size=16, weight="bold"))
+                )
+                
+            ], horizontal_alignment="center", scroll=ft.ScrollMode.AUTO)
+        )
+        page.update()
+
     # MERCHANT TERMINAL
     def merchant_terminal():
         page.controls.clear()
@@ -557,7 +770,11 @@ def main(page: ft.Page):
                         title=ft.Row([ft.Text("🏪", size=24), ft.Text(session['merchant_name'], size=18, weight="bold")], spacing=10),
                         center_title=True, bgcolor="#10b981", color="white",
                         leading=ft.IconButton(icon="store", icon_color="white"),
-                        actions=[ft.IconButton(icon="logout", on_click=lambda _: logout(), icon_color="white")]
+                        actions=[
+                            ft.IconButton(icon="analytics", on_click=lambda _: analytics_dashboard(), 
+                                        tooltip="Analytics Dashboard", icon_color="white"),
+                            ft.IconButton(icon="logout", on_click=lambda _: logout(), icon_color="white")
+                        ]
                     ),
                     ft.Column([
                         ft.Container(height=20),
@@ -681,7 +898,11 @@ def main(page: ft.Page):
             ft.AppBar(title=ft.Row([ft.Text("🏪", size=24), ft.Text(session['merchant_name'], size=18, weight="bold")], spacing=10),
                      center_title=True, bgcolor="#10b981", color="white",
                      leading=ft.IconButton(icon="store", icon_color="white"),
-                     actions=[ft.IconButton(icon="logout", on_click=lambda _: logout(), icon_color="white")]),
+                     actions=[
+                         ft.IconButton(icon="analytics", on_click=lambda _: analytics_dashboard(), 
+                                     tooltip="Analytics Dashboard", icon_color="white"),
+                         ft.IconButton(icon="logout", on_click=lambda _: logout(), icon_color="white")
+                     ]),
             ft.Column([
                 ft.Container(height=20),
                 

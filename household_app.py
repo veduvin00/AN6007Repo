@@ -66,7 +66,15 @@ def main(page: ft.Page):
             uid = user_id_input.value.strip()
             if not uid:
                 show_snack("Please enter an ID", "red")
+                user_id_input.border_color = "red"
+                user_id_input.error_text = "Household ID is required"
+                page.update()
                 return
+
+            # Clear previous errors
+            user_id_input.border_color = None
+            user_id_input.error_text = None
+            page.update()
 
             response, status = api_client.get_balance(uid)
             
@@ -80,7 +88,11 @@ def main(page: ft.Page):
                 else:
                     claim_vouchers_view()
             else:
-                show_snack("ID not found. Please register first.", "red")
+                # Show prominent error
+                user_id_input.border_color = "red"
+                user_id_input.error_text = "❌ Household ID not found"
+                show_snack("❌ Household ID not found. Please register first.", "red")
+                page.update()
 
         logo_header = ft.Container(
             width=350, padding=30, border_radius=15,
@@ -317,7 +329,7 @@ def main(page: ft.Page):
         )
         page.update()
 
-    # CLAIM VOUCHERS VIEW - EXACT ORIGINAL DESIGN
+    # CLAIM VOUCHERS VIEW
     def claim_vouchers_view():
         page.controls.clear()
         
@@ -345,7 +357,11 @@ def main(page: ft.Page):
         
         def scheme_card(name, vouchers_dict):
             total_value = sum(int(denom) * count for denom, count in vouchers_dict.items())
-            is_claimed = name in existing_vouchers
+            # FIX 1: Check if tranche has vouchers with count > 0
+            is_claimed = False
+            if name in existing_vouchers:
+                tranche_vouchers = existing_vouchers[name]
+                is_claimed = any(count > 0 for count in tranche_vouchers.values())
             
             card_content = ft.Container(
                 width=350, padding=20, border_radius=12,
