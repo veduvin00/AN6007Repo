@@ -1,7 +1,6 @@
 """
 CDC Merchant App - Enhanced with Validation
 UEN, Bank Code, and other field validations
-FIXED: Voucher display logic updated to handle nested Tranche structure.
 """
 import flet as ft
 import re
@@ -88,6 +87,25 @@ def validate_account_number(account_number):
         return False, "Account number must be 7-12 digits"
     
     return True, ""
+
+def parse_timestamp_to_time(timestamp):
+    """Parse timestamp to time string, handling multiple formats"""
+    try:
+        # Format 1: "2026-02-12-143000" (from CSV)
+        if '-' in timestamp and len(timestamp) >= 17:
+            parts = timestamp.split('-')
+            if len(parts) == 4:
+                time_part = parts[3]  # "143000"
+                return f"{time_part[0:2]}:{time_part[2:4]}:{time_part[4:6]}"
+        
+        # Format 2: "20260212143000" (compact)
+        if len(timestamp) == 14 and timestamp.isdigit():
+            return datetime.strptime(timestamp, "%Y%m%d%H%M%S").strftime("%H:%M:%S")
+        
+        # Fallback: return as-is
+        return timestamp[:8] if len(timestamp) > 8 else timestamp
+    except:
+        return timestamp
 
 def main(page: ft.Page):
     print("="*50)
@@ -490,23 +508,46 @@ def main(page: ft.Page):
                 try:
                     with open(filepath, 'r') as f:
                         reader = csv.reader(f)
+                        seen_transactions = set()  # Track unique transaction IDs
+                        
                         for row in reader:
                             if len(row) >= 7:  # Ensure valid row
                                 transaction_id = row[0]
+                                
+                                # Skip header row
+                                if transaction_id == "Transaction_ID":
+                                    continue
+                                
+                                # Skip duplicate transaction IDs (same transaction, different denomination rows)
+                                if transaction_id in seen_transactions:
+                                    continue
+                                seen_transactions.add(transaction_id)
+                                
                                 household_id = row[1]
                                 merchant_id = row[2]
                                 timestamp = row[3]
-                                token = row[4]
-                                voucher_details = row[5]
-                                total_amount = int(row[6]) if row[6].isdigit() else 0
+                                voucher_code = row[4]
+                                denomination_used = row[5]
+                                amount_redeemed = row[6]
+                                
+                                # Parse amount: "$30.00" -> 30
+                                try:
+                                    # Remove $ and convert to float then int
+                                    total_amount = int(float(amount_redeemed.replace('$', '').replace(',', '')))
+                                except (ValueError, AttributeError):
+                                    total_amount = 0
+                                
+                                # Skip $0 transactions
+                                if total_amount == 0:
+                                    continue
                                 
                                 all_transactions.append({
                                     "transaction_id": transaction_id,
                                     "household_id": household_id,
                                     "merchant_id": merchant_id,
                                     "timestamp": timestamp,
-                                    "token": token,
-                                    "voucher_details": voucher_details,
+                                    "token": voucher_code,
+                                    "voucher_details": denomination_used,
                                     "amount": total_amount
                                 })
                                 
@@ -516,10 +557,10 @@ def main(page: ft.Page):
                                         "transaction_id": transaction_id,
                                         "household_id": household_id,
                                         "timestamp": timestamp,
-                                        "token": token,
-                                        "voucher_details": voucher_details,
+                                        "token": voucher_code,
+                                        "voucher_details": denomination_used,
                                         "amount": total_amount,
-                                        "time": datetime.strptime(timestamp, "%Y%m%d%H%M%S").strftime("%H:%M:%S") if len(timestamp) == 14 else timestamp
+                                        "time": parse_timestamp_to_time(timestamp)
                                     })
                 except Exception as e:
                     print(f"Error reading {csv_file}: {e}")
@@ -529,8 +570,13 @@ def main(page: ft.Page):
         total_revenue = sum(txn["amount"] for txn in merchant_transactions)
         
         # Today's transactions
-        today = datetime.now().strftime("%Y%m%d")
-        today_transactions = [txn for txn in merchant_transactions if txn["timestamp"].startswith(today)]
+        today = datetime.now().strftime("%Y%m%d")  # "20260212"
+        today_with_dash = datetime.now().strftime("%Y-%m-%d")  # "2026-02-12"
+        
+        today_transactions = [
+            txn for txn in merchant_transactions 
+            if txn["timestamp"].startswith(today) or txn["timestamp"].startswith(today_with_dash)
+        ]
         today_count = len(today_transactions)
         today_revenue = sum(txn["amount"] for txn in today_transactions)
         
@@ -740,10 +786,11 @@ def main(page: ft.Page):
             
             if status == 200:
                 total_amt = response["amount"]
-                vouchers_data = response["vouchers"] # Can be nested {Tranche: {Denom: Count}} or flat
+                vouchers = response["vouchers"]
                 household_id = response["household_id"]
                 
                 print(f"✅ Success! ${total_amt}")
+                print(f"{'='*50}\n")
                 
                 # Add to local transaction history
                 session["transactions"].append({
@@ -756,25 +803,28 @@ def main(page: ft.Page):
                 # Clear input
                 token_input.value = ""
                 
-                # Show success message
+                # Show success message on screen
                 show_snack(f"✅ Successfully redeemed ${total_amt}!", "green")
                 
-                # FIXED: Generate voucher breakdown text robustly (handling nested dicts)
-                details = []
-                # Check if nested (Tranche -> Denom) or flat (Denom)
-                is_nested = any(isinstance(v, dict) for v in vouchers_data.values())
+                # Voucher breakdown - handle nested structure {Tranche: {Denom: Count}}
+                voucher_parts = []
+                if isinstance(vouchers, dict):
+                    # Check if nested (contains dict values)
+                    is_nested = any(isinstance(v, dict) for v in vouchers.values())
+                    
+                    if is_nested:
+                        # Format: "Jan2026: $10×3, May2025: $5×2"
+                        for tranche, denoms in vouchers.items():
+                            for denom, count in sorted(denoms.items(), key=lambda x: int(x[0])):
+                                voucher_parts.append(f"{tranche}: ${denom}×{count}")
+                    else:
+                        # Flat format: "$10×3, $5×2"
+                        for denom, count in sorted(vouchers.items(), key=lambda x: int(x[0])):
+                            voucher_parts.append(f"${denom}×{count}")
                 
-                if is_nested:
-                    for tr, denoms in vouchers_data.items():
-                            for d, c in denoms.items():
-                                details.append(f"{tr}: ${d}x{c}")
-                else:
-                    for d, c in sorted(vouchers_data.items(), key=lambda x: int(x[0])):
-                        details.append(f"${d}x{c}")
+                voucher_text = ", ".join(voucher_parts) if voucher_parts else "No vouchers"
                 
-                voucher_text = "\n".join(details)
-                
-                # Rebuild page with success message
+                # Rebuild page with success message displayed
                 page.controls.clear()
                 
                 page.add(
@@ -828,7 +878,7 @@ def main(page: ft.Page):
                                     border=ft.border.all(1, "#10b981"),
                                     content=ft.Column([
                                         ft.Text("Vouchers Used", size=12, weight="bold", color="#065f46"),
-                                        ft.Text(voucher_text, size=14, color="#059669", weight="bold", text_align="center")
+                                        ft.Text(voucher_text, size=16, color="#059669", weight="bold")
                                     ], horizontal_alignment="center", spacing=5)
                                 ),
                                 
@@ -900,6 +950,7 @@ def main(page: ft.Page):
                 )
                 
                 page.update()
+                print("✅ Success screen displayed!")
             else:
                 error = response.get("error", "Unknown error")
                 print(f"❌ {error}\n")
